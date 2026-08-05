@@ -12,9 +12,11 @@ import { auditRoutes } from './routes/audit-routes.js';
 import { catalogRoutes } from './routes/catalog-routes.js';
 import { caseRoutes } from './routes/case-routes.js';
 import { documentRoutes } from './routes/document-routes.js';
+import { notificationRoutes } from './routes/notification-routes.js';
 import { peopleRoutes } from './routes/people-routes.js';
 import { requestRoutes } from './routes/request-routes.js';
 import { roleRoutes } from './routes/role-routes.js';
+import { taskRoutes } from './routes/task-routes.js';
 import { userRoutes } from './routes/user-routes.js';
 
 export async function buildApp(options = {}) {
@@ -80,10 +82,12 @@ export async function buildApp(options = {}) {
   await app.register(catalogRoutes, { prefix: '/api/v1/catalogs' });
   await app.register(caseRoutes, { prefix: '/api/v1/cases' });
   await app.register(documentRoutes, { prefix: '/api/v1/cases' });
+  await app.register(notificationRoutes, { prefix: '/api/v1/notifications' });
   await app.register(peopleRoutes, { prefix: '/api/v1/people' });
   await app.register(requestRoutes, { prefix: '/api/v1/requests' });
   await app.register(userRoutes, { prefix: '/api/v1/users' });
   await app.register(roleRoutes, { prefix: '/api/v1/roles' });
+  await app.register(taskRoutes, { prefix: '/api/v1/tasks' });
 
   return app;
 }

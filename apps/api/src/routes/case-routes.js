@@ -514,6 +514,17 @@ export async function caseRoutes(app) {
             throw expectedError('Asigna un responsable antes de iniciar el trámite.');
           }
         }
+        if (request.body.statusCode === 'archived') {
+          const activeTasks = await client.query(
+            `SELECT COUNT(*)::int AS total
+             FROM tasks t JOIN task_statuses ts ON ts.id = t.status_id
+             WHERE t.case_id = $1 AND ts.code IN ('pending', 'in_progress')`,
+            [request.params.id],
+          );
+          if (activeTasks.rows[0].total > 0) {
+            throw expectedError('Completa o cancela las tareas activas antes de archivar el expediente.');
+          }
+        }
         const nextResult = await client.query('SELECT id, code FROM case_statuses WHERE code = $1', [request.body.statusCode]);
         const next = nextResult.rows[0];
         await client.query(

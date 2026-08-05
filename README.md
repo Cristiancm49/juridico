@@ -6,7 +6,7 @@ La aplicación usa JavaScript, React, Node.js, Fastify, PostgreSQL y consultas S
 
 ## Requisitos
 
-- Node.js 22 o superior
+- Node.js 22.12 o superior
 - npm
 - Docker Desktop para PostgreSQL y el almacenamiento privado MinIO
 
@@ -18,6 +18,8 @@ La aplicación usa JavaScript, React, Node.js, Fastify, PostgreSQL y consultas S
 4. Ejecutar `npm run db:migrate`.
 5. Ejecutar `npm run db:seed`.
 6. Iniciar el sistema con `npm run dev`.
+
+`npm run dev` inicia la interfaz, el API y el trabajador de alertas. En una ejecución separada puede iniciarse solamente el trabajador con `npm run worker`.
 
 La interfaz estará en `http://localhost:5173` y el API en `http://localhost:3100`.
 La consola local de almacenamiento estará en `http://localhost:59001`; no debe exponerse en producción.

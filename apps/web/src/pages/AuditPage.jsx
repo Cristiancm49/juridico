@@ -25,6 +25,9 @@ const actionLabels = {
   'legal_action.update': 'Actuación jurídica actualizada',
   'document.upload': 'Documento cargado',
   'document.download': 'Documento descargado',
+  'task.create': 'Tarea creada',
+  'task.update': 'Tarea actualizada',
+  'task.status_change': 'Estado de tarea cambiado',
 };
 
 const emptyFilters = { search: '', action: '', from: '', to: '' };

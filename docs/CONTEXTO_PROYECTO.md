@@ -1,7 +1,7 @@
 # Contexto vivo de LegalDesk
 
 Última actualización: 5 de agosto de 2026  
-Estado: Sprints 1, 2, 3 y 4 completados; Sprint 5 listo para iniciar
+Estado: Sprints 1, 2, 3, 4 y 5 completados; Sprint 6 listo para iniciar
 
 > Leer este archivo antes de implementar una funcionalidad. Actualizarlo cuando cambien la arquitectura, la base de datos, los permisos, las rutas o el estado del backlog.
 
@@ -22,12 +22,14 @@ La primera versión prioriza simplicidad, trazabilidad y seguridad. No incluye p
 - Monolito modular en un solo repositorio; no microservicios.
 - Autenticación propia mediante sesiones opacas en cookies; no JWT en el navegador.
 - Archivos en almacenamiento privado compatible con S3 mediante AWS SDK; MinIO se usa localmente y PostgreSQL guarda solo metadatos.
+- Alertas diferidas mediante `pg-boss` sobre PostgreSQL; no Redis, WebSockets ni servicios de mensajería externos en el MVP.
 
 ## 3. Topología local
 
 ```text
 React/Vite :5173  ->  API Fastify :3100  ->  PostgreSQL Docker :55432
                                       ->  MinIO S3 privado :59000
+Worker pg-boss ----------------------> PostgreSQL Docker :55432
 ```
 
 - URL de la aplicación: `http://127.0.0.1:5173`
@@ -47,10 +49,12 @@ apps/
       app.js             # plugins, rutas y errores
       auth.js            # autenticación y autorización
       audit.js           # escritura de bitácora
+      alerts.js          # generación idempotente de alertas
       db.js              # pool y transacciones
       security.js        # tokens y validaciones
       storage.js         # acceso privado a objetos S3 compatibles
       server.js          # inicio del servicio
+      worker.js          # revisión periódica de vencimientos
     test/                # pruebas con node:test
   web/
     src/
@@ -92,7 +96,7 @@ No editar `node_modules`, `apps/web/dist` ni `tmp`.
 
 ## 7. Base de datos actual
 
-Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql`, `004_legal_requests.sql`, `005_cases.sql`, `006_case_tracking.sql`, `007_legal_actions.sql` y `008_documents.sql`.
+Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql`, `004_legal_requests.sql`, `005_cases.sql`, `006_case_tracking.sql`, `007_legal_actions.sql`, `008_documents.sql` y `009_tasks_notifications.sql`.
 
 Tablas:
 
@@ -117,6 +121,11 @@ Tablas:
 - `legal_actions`: línea de tiempo del expediente con tipo, fecha efectiva, descripción, resultado y autor.
 - `document_categories`: catálogo ordenado de ocho clases de documento jurídico.
 - `documents`: metadatos, ubicación privada, hash SHA-256, grupo lógico, versión, vigencia, categoría y autor de carga.
+- `task_statuses`: pendiente, en curso, completada y cancelada, con color y condición terminal.
+- `tasks`: compromiso, expediente, responsable, prioridad, fecha límite, estado y anticipaciones de alerta.
+- `task_status_history`: trazabilidad de los cambios de estado de una tarea.
+- `notifications`: alertas personales persistentes, lectura e idempotencia por tarea, responsable, código y fecha límite.
+- Esquema `pgboss`: cola y programación administradas por `pg-boss`; se inicializa al arrancar el trabajador.
 - `schema_migrations`: migraciones ya aplicadas.
 
 Toda nueva tabla o columna requiere una nueva migración numerada. No modificar una migración aplicada.
@@ -209,6 +218,15 @@ Matriz inicial validada técnicamente:
 | `GET /api/v1/cases/:caseId/documents` | `documents.read` | Consultar documentos y versiones del expediente |
 | `POST /api/v1/cases/:caseId/documents` | `documents.write` | Cargar un documento o una nueva versión validada |
 | `GET /api/v1/cases/:caseId/documents/:documentId/download` | `documents.read` | Descargar por la API después de comprobar autorización |
+| `GET /api/v1/tasks/options` | `tasks.read` | Consultar expedientes, responsables, prioridades y estados disponibles |
+| `GET /api/v1/tasks/summary` | `tasks.read` | Obtener conteos de tareas activas, vencidas, de hoy y de la semana |
+| `GET /api/v1/tasks` | `tasks.read` | Buscar y filtrar tareas con paginación |
+| `GET /api/v1/tasks/:id` | `tasks.read` | Consultar tarea e historial de estados |
+| `POST /api/v1/tasks` | `tasks.write` | Crear una tarea asociada a un expediente |
+| `PATCH /api/v1/tasks/:id` | `tasks.write` | Editar, reasignar, reprogramar o cambiar estado |
+| `GET /api/v1/notifications` | `tasks.read` | Consultar las alertas propias y el total sin leer |
+| `PATCH /api/v1/notifications/:id/read` | `tasks.read` | Marcar una alerta propia como leída |
+| `POST /api/v1/notifications/read-all` | `tasks.read` | Marcar todas las alertas propias como leídas |
 
 ## 11. Pantallas implementadas
 
@@ -227,6 +245,9 @@ Matriz inicial validada técnicamente:
 - Seguimiento de expedientes: responsable actual, reasignación, filtros e historiales de asignación y estado.
 - Actuaciones jurídicas: registro y edición, tipo, fecha efectiva, resultado opcional y línea de tiempo adaptable en la ficha del expediente.
 - Gestión documental en expedientes: carga privada, categorías, historial de versiones, hash, metadatos y descarga autorizada.
+- Tareas y vencimientos: resumen, filtros, creación, edición, responsables, estados e historial.
+- Centro de notificaciones: campana con contador, alertas persistentes, lectura individual y lectura total.
+- Tablero: indicadores reales de tareas activas, vencidas, para hoy y para los próximos siete días.
 
 ## 12. Estado del backlog
 
@@ -270,12 +291,21 @@ Matriz inicial validada técnicamente:
 
 ### Sprint 5 - tareas, vencimientos y alertas
 
-- [ ] Tareas y compromisos asociados al expediente.
-- [ ] Fechas límite, responsable, prioridad y estado de la tarea.
-- [ ] Alertas internas idempotentes a 7, 3 y 1 día, el día límite y al vencer.
-- [ ] Centro de notificaciones con pendientes y leídas.
-- [ ] Vistas de próximos vencimientos y vencidos.
-- [ ] Pruebas de generación única, permisos y cambios de estado.
+- [x] Tareas y compromisos asociados al expediente.
+- [x] Fechas límite, responsable, prioridad y estado de la tarea.
+- [x] Alertas internas idempotentes a 7, 3 y 1 día, el día límite y al vencer.
+- [x] Centro de notificaciones con pendientes y leídas.
+- [x] Vistas de próximos vencimientos y vencidos.
+- [x] Pruebas de generación única, permisos y cambios de estado.
+
+### Sprint 6 - reportes y experiencia
+
+- [ ] Tablero con indicadores jurídicos y operativos acordados.
+- [ ] Reportes filtrables por estado, área, responsable y periodo.
+- [ ] Exportación CSV segura.
+- [ ] Revisión transversal de estados vacíos, carga, errores y navegación por teclado.
+- [ ] Pruebas de rendimiento de las consultas críticas.
+- [ ] Evidencia de respuesta menor de tres segundos con el volumen acordado.
 
 Los sprints posteriores están detallados en `docs/analisis-y-plan-legaldesk.md`.
 
@@ -302,11 +332,13 @@ npm test
 npm run test:case-tracking
 npm run test:actions
 npm run test:documents
+npm run test:tasks
 npm run test:cases
 npm run test:intake
 npm run test:requests
 npm run test:roles
 npm run build
+npm run worker
 ```
 
 ## 15. Decisiones todavía abiertas
@@ -316,6 +348,7 @@ npm run build
 - Confirmar si se permiten nuevas actuaciones en expedientes cerrados. Actualmente se permiten; solo los archivados bloquean cambios.
 - Confirmación funcional de los ocho tipos iniciales de actuación jurídica antes de permitir su administración.
 - Confirmación funcional de los cinco formatos, límite inicial de 20 MB y ocho categorías documentales.
+- Confirmar si las anticipaciones iniciales `7, 3, 1 y 0` días serán fijas o configurables por tarea.
 - Confirmar si los practicantes pueden ser responsables principales o únicamente apoyo supervisado.
 - Confirmación funcional de las siete áreas jurídicas y cuatro prioridades iniciales antes de permitir su edición.
 - Confirmación funcional de las transiciones iniciales de solicitudes: `received -> in_review/rejected`, `in_review -> approved/rejected`, `approved -> in_review`; `rejected` y `converted` son terminales.
@@ -335,3 +368,4 @@ npm run build
 - 5 de agosto de 2026: responsables, reasignaciones, estados e historiales de expediente; inicio del Sprint 3.
 - 5 de agosto de 2026: actuaciones jurídicas con línea de tiempo, permisos, auditoría y pruebas; cierre técnico del Sprint 3.
 - 5 de agosto de 2026: documentos privados en MinIO, metadatos, hash, versiones y descargas autorizadas; cierre técnico del Sprint 4.
+- 5 de agosto de 2026: tareas, vencimientos, trabajador `pg-boss`, alertas idempotentes y centro de notificaciones; cierre técnico del Sprint 5.
