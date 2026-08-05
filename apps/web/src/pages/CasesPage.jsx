@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Edit3, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { BriefcaseBusiness, Edit3, Eye, Plus, RefreshCw, Search, UserRoundCheck, Workflow, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch } from '../api.js';
@@ -17,27 +17,45 @@ function emptyForm() {
   };
 }
 
+const statusTransitions = {
+  open: ['in_progress', 'closed'],
+  in_progress: ['on_hold', 'closed'],
+  on_hold: ['in_progress', 'closed'],
+  closed: ['in_progress', 'archived'],
+  archived: [],
+};
+
 export function CasesPage() {
   const { can } = useAuth();
   const [cases, setCases] = useState([]);
   const [people, setPeople] = useState([]);
   const [areas, setAreas] = useState([]);
   const [priorities, setPriorities] = useState([]);
-  const [filters, setFilters] = useState({ search: '', legalAreaId: '', priorityId: '' });
+  const [statuses, setStatuses] = useState([]);
+  const [assignees, setAssignees] = useState([]);
+  const [filters, setFilters] = useState({ search: '', legalAreaId: '', priorityId: '', status: '', assignee: '' });
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0 });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm());
+  const [assignmentHistory, setAssignmentHistory] = useState([]);
+  const [statusHistory, setStatusHistory] = useState([]);
+  const [assignmentForm, setAssignmentForm] = useState({ userId: '', comment: '' });
+  const [statusForm, setStatusForm] = useState({ statusCode: '', comment: '' });
+  const [trackingSaving, setTrackingSaving] = useState(false);
 
   const loadCases = useCallback(async (page = 1, activeFilters = appliedFilters) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), limit: '25' });
-      Object.entries(activeFilters).forEach(([key, value]) => {
-        if (value) params.set(key, value);
-      });
+      if (activeFilters.search) params.set('search', activeFilters.search);
+      if (activeFilters.legalAreaId) params.set('legalAreaId', activeFilters.legalAreaId);
+      if (activeFilters.priorityId) params.set('priorityId', activeFilters.priorityId);
+      if (activeFilters.status) params.set('status', activeFilters.status);
+      if (activeFilters.assignee === 'unassigned') params.set('unassigned', 'true');
+      else if (activeFilters.assignee) params.set('assigneeId', activeFilters.assignee);
       const data = await apiFetch(`/api/v1/cases?${params}`);
       setCases(data.cases);
       setPagination(data.pagination);
@@ -55,11 +73,15 @@ export function CasesPage() {
       apiFetch('/api/v1/people?limit=100'),
       apiFetch('/api/v1/catalogs/legal-areas'),
       apiFetch('/api/v1/catalogs/priorities'),
+      apiFetch('/api/v1/catalogs/case-statuses'),
+      apiFetch('/api/v1/cases/assignees'),
     ])
-      .then(([peopleData, areaData, priorityData]) => {
+      .then(([peopleData, areaData, priorityData, statusData, assigneeData]) => {
         setPeople(peopleData.people);
         setAreas(areaData.legalAreas);
         setPriorities(priorityData.priorities);
+        setStatuses(statusData.caseStatuses);
+        setAssignees(assigneeData.assignees);
       })
       .catch((error) => toast.error(error.message));
   }, []);
@@ -86,6 +108,10 @@ export function CasesPage() {
       const data = await apiFetch(`/api/v1/cases/${item.id}`);
       const detail = data.case;
       setEditing({ mode: 'edit', case: detail });
+      setAssignmentHistory(data.assignmentHistory);
+      setStatusHistory(data.statusHistory);
+      setAssignmentForm({ userId: detail.assignee?.id || assignees[0]?.id || '', comment: '' });
+      setStatusForm({ statusCode: detail.status.code, comment: '' });
       setForm({
         personId: detail.person.id,
         legalAreaId: detail.legalArea.id,
@@ -121,11 +147,65 @@ export function CasesPage() {
     }
   }
 
+  async function refreshTracking(caseId) {
+    const data = await apiFetch(`/api/v1/cases/${caseId}`);
+    setEditing((value) => ({ ...value, case: data.case }));
+    setAssignmentHistory(data.assignmentHistory);
+    setStatusHistory(data.statusHistory);
+    setAssignmentForm({ userId: data.case.assignee?.id || assignees[0]?.id || '', comment: '' });
+    setStatusForm({ statusCode: data.case.status.code, comment: '' });
+    await loadCases(pagination.page);
+  }
+
+  async function assignCase() {
+    if (!assignmentForm.userId) {
+      toast.error('Selecciona un responsable.');
+      return;
+    }
+    setTrackingSaving(true);
+    try {
+      await apiFetch(`/api/v1/cases/${editing.case.id}/assign`, {
+        method: 'POST',
+        body: JSON.stringify(assignmentForm),
+      });
+      toast.success(editing.case.assignee ? 'Responsable reasignado correctamente.' : 'Responsable asignado correctamente.');
+      await refreshTracking(editing.case.id);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setTrackingSaving(false);
+    }
+  }
+
+  async function changeStatus() {
+    if (statusForm.statusCode === editing.case.status.code) {
+      toast.error('Selecciona un estado diferente.');
+      return;
+    }
+    setTrackingSaving(true);
+    try {
+      await apiFetch(`/api/v1/cases/${editing.case.id}/status`, {
+        method: 'POST',
+        body: JSON.stringify(statusForm),
+      });
+      toast.success('Estado actualizado correctamente.');
+      await refreshTracking(editing.case.id);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setTrackingSaving(false);
+    }
+  }
+
   const activeOnly = editing?.mode === 'create';
   const selectablePeople = activeOnly ? people.filter(({ active }) => active) : people;
   const selectableAreas = activeOnly ? areas.filter(({ active }) => active) : areas;
   const selectablePriorities = activeOnly ? priorities.filter(({ active }) => active) : priorities;
   const totalPages = Math.max(1, Math.ceil(pagination.total / pagination.limit));
+  const currentStatus = editing?.case?.status.code;
+  const availableStatuses = currentStatus
+    ? statuses.filter(({ code }) => [currentStatus, ...(statusTransitions[currentStatus] || [])].includes(code))
+    : statuses;
 
   return (
     <section>
@@ -138,6 +218,8 @@ export function CasesPage() {
         <label className="search-field"><Search size={18} /><input value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Número, radicado, asunto, cliente o documento" /></label>
         <select aria-label="Filtrar por área" value={filters.legalAreaId} onChange={(event) => setFilters({ ...filters, legalAreaId: event.target.value })}><option value="">Todas las áreas</option>{areas.map((area) => <option value={area.id} key={area.id}>{area.name}</option>)}</select>
         <select aria-label="Filtrar por prioridad" value={filters.priorityId} onChange={(event) => setFilters({ ...filters, priorityId: event.target.value })}><option value="">Todas las prioridades</option>{priorities.map((priority) => <option value={priority.id} key={priority.id}>{priority.name}</option>)}</select>
+        <select aria-label="Filtrar por estado" value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}><option value="">Todos los estados</option>{statuses.map((status) => <option value={status.code} key={status.id}>{status.name}</option>)}</select>
+        <select aria-label="Filtrar por responsable" value={filters.assignee} onChange={(event) => setFilters({ ...filters, assignee: event.target.value })}><option value="">Todos los responsables</option><option value="unassigned">Sin responsable</option>{assignees.map((assignee) => <option value={assignee.id} key={assignee.id}>{assignee.fullName}</option>)}</select>
         <button className="primary-button">Aplicar</button>
         <button type="button" className="icon-button" onClick={() => loadCases(pagination.page)} aria-label="Actualizar expedientes" title="Actualizar"><RefreshCw size={18} /></button>
       </form>
@@ -146,21 +228,22 @@ export function CasesPage() {
         <div className="table-caption"><strong>{pagination.total} expedientes</strong><span>Los expedientes convertidos conservan el vínculo con su solicitud.</span></div>
         <div className="table-scroll">
           <table className="cases-table">
-            <thead><tr><th>Expediente</th><th>Cliente</th><th>Clasificación</th><th>Prioridad</th><th>Origen</th><th>Estado</th><th>Apertura</th><th><span className="sr-only">Acciones</span></th></tr></thead>
+            <thead><tr><th>Expediente</th><th>Cliente</th><th>Responsable</th><th>Clasificación</th><th>Prioridad</th><th>Origen</th><th>Estado</th><th>Apertura</th><th><span className="sr-only">Acciones</span></th></tr></thead>
             <tbody>
               {cases.map((item) => (
                 <tr key={item.id}>
                   <td><strong className="request-number">{item.caseNumber}</strong><span className="request-subject">{item.title}</span>{item.externalReference && <small className="case-reference">Radicado: {item.externalReference}</small>}</td>
                   <td><strong className="table-primary">{item.person.fullName}</strong><span className="table-secondary">{item.person.documentType} {item.person.documentNumber}</span></td>
+                  <td>{item.assignee ? <div className="assignee-cell"><span>{item.assignee.fullName.split(' ').slice(0, 2).map((part) => part[0]).join('')}</span><strong>{item.assignee.fullName}</strong></div> : <span className="unassigned-label">Sin asignar</span>}</td>
                   <td><span className="tag">{item.legalArea.name}</span></td>
                   <td><span className="priority-badge"><i style={{ backgroundColor: item.priority.color }} />{item.priority.name}</span></td>
                   <td>{item.originRequest ? <span className="origin-badge">{item.originRequest.requestNumber}</span> : <span className="table-secondary">Creación manual</span>}</td>
                   <td><span className="request-status" style={{ color: item.status.color, backgroundColor: `${item.status.color}14` }}>{item.status.name}</span></td>
                   <td>{new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${item.openedDate}T00:00:00Z`))}</td>
-                  <td className="actions-cell">{can('cases.write') && <button className="icon-button" onClick={() => openEdit(item)} aria-label={`Editar ${item.caseNumber}`} title="Editar expediente"><Edit3 size={18} /></button>}</td>
+                  <td className="actions-cell"><button className="icon-button" onClick={() => openEdit(item)} aria-label={`${can('cases.write') ? 'Editar' : 'Ver'} ${item.caseNumber}`} title={can('cases.write') ? 'Editar expediente' : 'Ver expediente'}>{can('cases.write') ? <Edit3 size={18} /> : <Eye size={18} />}</button></td>
                 </tr>
               ))}
-              {!loading && cases.length === 0 && <tr><td colSpan="8" className="empty-cell">No hay expedientes que coincidan con los filtros.</td></tr>}
+              {!loading && cases.length === 0 && <tr><td colSpan="9" className="empty-cell">No hay expedientes que coincidan con los filtros.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -172,7 +255,19 @@ export function CasesPage() {
           <form className="modal-card case-modal" onSubmit={saveCase} aria-label={editing.mode === 'create' ? 'Crear expediente' : 'Editar expediente'}>
             <div className="modal-head"><div><span className="eyebrow">{editing.mode === 'create' ? 'NUEVO ASUNTO' : editing.case.caseNumber}</span><h2>{editing.mode === 'create' ? 'Crear expediente' : 'Editar expediente'}</h2></div><button type="button" className="icon-button" onClick={() => setEditing(null)} aria-label="Cerrar"><X /></button></div>
             {editing.mode === 'edit' && editing.case.originRequest && <div className="case-origin-note"><BriefcaseBusiness size={19} /><div><strong>Originado en {editing.case.originRequest.requestNumber}</strong><span>La solicitud y el expediente permanecen relacionados.</span></div></div>}
-            <div className="form-grid">
+            {editing.mode === 'edit' && (
+              <div className="case-tracking-grid">
+                <section className="tracking-card">
+                  <div className="tracking-head"><UserRoundCheck size={19} /><div><strong>Responsable actual</strong><span>{editing.case.assignee?.fullName || 'Sin responsable asignado'}</span></div></div>
+                  {can('cases.assign') && <div className="tracking-controls"><select aria-label="Nuevo responsable" value={assignmentForm.userId} onChange={(event) => setAssignmentForm({ ...assignmentForm, userId: event.target.value })}><option value="">Seleccionar responsable</option>{assignees.map((assignee) => <option value={assignee.id} key={assignee.id}>{assignee.fullName}</option>)}</select><input value={assignmentForm.comment} onChange={(event) => setAssignmentForm({ ...assignmentForm, comment: event.target.value })} placeholder="Motivo de asignación (opcional)" maxLength="500" /><button type="button" className="secondary-button" onClick={assignCase} disabled={trackingSaving}>Asignar</button></div>}
+                </section>
+                <section className="tracking-card">
+                  <div className="tracking-head"><Workflow size={19} /><div><strong>Estado del expediente</strong><span>{editing.case.status.name}</span></div></div>
+                  {can('cases.write') && <div className="tracking-controls"><select aria-label="Nuevo estado" value={statusForm.statusCode} onChange={(event) => setStatusForm({ ...statusForm, statusCode: event.target.value })}>{availableStatuses.map((status) => <option value={status.code} key={status.id}>{status.name}</option>)}</select><input value={statusForm.comment} onChange={(event) => setStatusForm({ ...statusForm, comment: event.target.value })} placeholder="Comentario del cambio (opcional)" maxLength="500" /><button type="button" className="secondary-button" onClick={changeStatus} disabled={trackingSaving || editing.case.status.terminal}>Cambiar estado</button></div>}
+                </section>
+              </div>
+            )}
+            <fieldset className="form-grid" disabled={!can('cases.write')}>
               <label className="full">Persona o cliente<select value={form.personId} onChange={(event) => setForm({ ...form, personId: event.target.value })} required>{selectablePeople.map((person) => <option value={person.id} key={person.id} disabled={!person.active}>{person.fullName} · {person.documentType} {person.documentNumber}{person.active ? '' : ' · Inactiva'}</option>)}</select></label>
               <label>Área jurídica<select value={form.legalAreaId} onChange={(event) => setForm({ ...form, legalAreaId: event.target.value })} required>{selectableAreas.map((area) => <option value={area.id} key={area.id} disabled={!area.active}>{area.name}{area.active ? '' : ' · Inactiva'}</option>)}</select></label>
               <label>Prioridad<select value={form.priorityId} onChange={(event) => setForm({ ...form, priorityId: event.target.value })} required>{selectablePriorities.map((priority) => <option value={priority.id} key={priority.id} disabled={!priority.active}>{priority.name}{priority.active ? '' : ' · Inactiva'}</option>)}</select></label>
@@ -181,8 +276,9 @@ export function CasesPage() {
               <label>Despacho o entidad <small className="optional-label">Opcional</small><input value={form.authority} onChange={(event) => setForm({ ...form, authority: event.target.value })} maxLength="180" /></label>
               <label>Fecha de apertura<input type="date" value={form.openedDate} onChange={(event) => setForm({ ...form, openedDate: event.target.value })} required /></label>
               <label className="full">Descripción del asunto<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required minLength="10" maxLength="5000" rows="5" /></label>
-            </div>
-            <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditing(null)}>Cancelar</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar expediente'}</button></div>
+            </fieldset>
+            {editing.mode === 'edit' && <div className="case-history-grid"><section className="status-history"><h3>Historial de responsables</h3>{assignmentHistory.length ? assignmentHistory.map((entry) => <div className="history-entry" key={entry.id}><i className="assignment-dot" /><div><strong>{entry.assignee.fullName}</strong><span>{entry.comment || 'Sin comentario'} · Asignó {entry.actor?.fullName || 'Usuario eliminado'}</span></div><time>{new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.assignedAt))}</time></div>) : <p className="tracking-empty">Aún no hay asignaciones.</p>}</section><section className="status-history"><h3>Historial de estados</h3>{statusHistory.map((entry) => <div className="history-entry" key={entry.id}><i style={{ backgroundColor: entry.toStatus.color }} /><div><strong>{entry.toStatus.name}</strong><span>{entry.comment || 'Sin comentario'} · {entry.actor?.fullName || 'Usuario eliminado'}</span></div><time>{new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.createdAt))}</time></div>)}</section></div>}
+            <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditing(null)}>{can('cases.write') ? 'Cancelar' : 'Cerrar'}</button>{can('cases.write') && <button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar expediente'}</button>}</div>
           </form>
         </div>
       )}

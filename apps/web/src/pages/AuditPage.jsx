@@ -19,6 +19,8 @@ const actionLabels = {
   'request.convert': 'Solicitud convertida',
   'case.create': 'Expediente creado',
   'case.update': 'Expediente actualizado',
+  'case.assignment_change': 'Responsable de expediente cambiado',
+  'case.status_change': 'Estado de expediente cambiado',
 };
 
 const emptyFilters = { search: '', action: '', from: '', to: '' };

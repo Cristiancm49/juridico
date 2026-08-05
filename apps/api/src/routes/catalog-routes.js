@@ -40,4 +40,17 @@ export async function catalogRoutes(app) {
       return { requestStatuses: result.rows };
     },
   );
+
+  app.get(
+    '/case-statuses',
+    { preHandler: [authenticate, requirePermission('cases.read')] },
+    async () => {
+      const result = await query(
+        `SELECT id, code, name, description, color, sort_order AS "sortOrder", terminal
+         FROM case_statuses
+         ORDER BY sort_order, name`,
+      );
+      return { caseStatuses: result.rows };
+    },
+  );
 }

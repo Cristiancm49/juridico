@@ -9,7 +9,7 @@ export function DashboardPage() {
     <section>
       <div className="page-heading">
         <div><span className="eyebrow">RESUMEN</span><h1>Buenos días, {firstName}</h1><p>Este es el punto de partida de LegalDesk.</p></div>
-        <div className="date-chip"><CalendarClock size={18} /> Fase 2 · Completada</div>
+        <div className="date-chip"><CalendarClock size={18} /> Fase 3 · Seguimiento</div>
       </div>
 
       <div className="metric-grid">
@@ -25,19 +25,19 @@ export function DashboardPage() {
           {[
             ['Usuarios, autenticación, roles y permisos', 'Completado'],
             ['Personas, solicitudes y expedientes', 'Completado'],
-            ['Asignaciones, estados y actuaciones', 'Siguiente'],
+            ['Asignaciones, estados y actuaciones', 'Actual'],
             ['Documentos, tareas y alertas', 'Pendiente'],
           ].map(([label, status], index) => (
-            <div className={`roadmap-row ${index === 1 ? 'current' : ''}`} key={label}>
+            <div className={`roadmap-row ${index === 2 ? 'current' : ''}`} key={label}>
               <span className="roadmap-number">{index + 1}</span><strong>{label}</strong><span>{status}</span>
             </div>
           ))}
         </article>
         <article className="panel focus-panel">
           <span className="eyebrow light">OBJETIVO ACTUAL</span>
-          <h2>Admisión conectada con el expediente.</h2>
-          <p>Las solicitudes aprobadas ahora se convierten sin duplicar la información del cliente.</p>
-          <div className="focus-link">Sprint 2 completado <ArrowUpRight size={18} /></div>
+          <h2>Responsables y estados con trazabilidad.</h2>
+          <p>Cada expediente conserva quién está a cargo y cómo avanza a través del flujo jurídico.</p>
+          <div className="focus-link">Sprint 3 en curso <ArrowUpRight size={18} /></div>
         </article>
       </div>
     </section>

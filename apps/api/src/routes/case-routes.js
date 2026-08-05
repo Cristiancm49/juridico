@@ -13,13 +13,28 @@ const caseProperties = {
   openedDate: { type: 'string', format: 'date' },
 };
 
+const allowedStatusTransitions = {
+  open: ['in_progress', 'closed'],
+  in_progress: ['on_hold', 'closed'],
+  on_hold: ['in_progress', 'closed'],
+  closed: ['in_progress', 'archived'],
+  archived: [],
+};
+
 const caseFrom = `
   FROM cases c
   JOIN people p ON p.id = c.person_id
   JOIN legal_areas la ON la.id = c.legal_area_id
   JOIN priorities pr ON pr.id = c.priority_id
   JOIN case_statuses cs ON cs.id = c.status_id
-  LEFT JOIN legal_requests lr ON lr.id = c.origin_request_id`;
+  LEFT JOIN legal_requests lr ON lr.id = c.origin_request_id
+  LEFT JOIN LATERAL (
+    SELECT u.id, u.full_name, u.email
+    FROM case_assignments ca
+    JOIN users u ON u.id = ca.user_id
+    WHERE ca.case_id = c.id AND ca.unassigned_at IS NULL
+    LIMIT 1
+  ) responsible ON TRUE`;
 
 const selectCase = `
   SELECT
@@ -41,6 +56,11 @@ const selectCase = `
     json_build_object('id', la.id, 'code', la.code, 'name', la.name) AS "legalArea",
     json_build_object('id', pr.id, 'code', pr.code, 'name', pr.name, 'level', pr.level, 'color', pr.color) AS priority,
     json_build_object('id', cs.id, 'code', cs.code, 'name', cs.name, 'color', cs.color, 'terminal', cs.terminal) AS status,
+    CASE WHEN responsible.id IS NULL THEN NULL ELSE json_build_object(
+      'id', responsible.id,
+      'fullName', responsible.full_name,
+      'email', responsible.email
+    ) END AS assignee,
     CASE WHEN lr.id IS NULL THEN NULL ELSE json_build_object(
       'id', lr.id,
       'requestNumber', lr.request_number,
@@ -97,6 +117,9 @@ export async function caseRoutes(app) {
             search: { type: 'string', maxLength: 120 },
             legalAreaId: { type: 'string', format: 'uuid' },
             priorityId: { type: 'string', format: 'uuid' },
+            status: { type: 'string', maxLength: 40 },
+            assigneeId: { type: 'string', format: 'uuid' },
+            unassigned: { type: 'boolean' },
             page: { type: 'integer', minimum: 1, default: 1 },
             limit: { type: 'integer', minimum: 10, maximum: 100, default: 25 },
           },
@@ -104,7 +127,7 @@ export async function caseRoutes(app) {
       },
     },
     async (request) => {
-      const { search, legalAreaId, priorityId, page = 1, limit = 25 } = request.query;
+      const { search, legalAreaId, priorityId, status, assigneeId, unassigned, page = 1, limit = 25 } = request.query;
       const conditions = [];
       const values = [];
       const add = (sql, value) => {
@@ -123,6 +146,9 @@ export async function caseRoutes(app) {
       }
       if (legalAreaId) add('c.legal_area_id = ?', legalAreaId);
       if (priorityId) add('c.priority_id = ?', priorityId);
+      if (status) add('cs.code = ?', status);
+      if (assigneeId) add('responsible.id = ?', assigneeId);
+      if (unassigned === true) conditions.push('responsible.id IS NULL');
       const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
       const countValues = [...values];
       values.push(limit);
@@ -146,6 +172,27 @@ export async function caseRoutes(app) {
   );
 
   app.get(
+    '/assignees',
+    { preHandler: [authenticate, requirePermission('cases.read')] },
+    async () => {
+      const result = await query(
+        `SELECT
+           u.id,
+           u.full_name AS "fullName",
+           u.email,
+           json_agg(DISTINCT jsonb_build_object('code', r.code, 'name', r.name)) AS roles
+         FROM users u
+         JOIN user_roles ur ON ur.user_id = u.id
+         JOIN roles r ON r.id = ur.role_id
+         WHERE u.active = TRUE AND r.code IN ('lawyer', 'intern')
+         GROUP BY u.id
+         ORDER BY u.full_name`,
+      );
+      return { assignees: result.rows };
+    },
+  );
+
+  app.get(
     '/:id',
     {
       preHandler: [authenticate, requirePermission('cases.read')],
@@ -154,7 +201,44 @@ export async function caseRoutes(app) {
     async (request, reply) => {
       const item = await getCase({ query }, request.params.id);
       if (!item) return reply.code(404).send({ message: 'Expediente no encontrado.' });
-      return { case: item };
+      const [assignmentResult, statusResult] = await Promise.all([
+        query(
+          `SELECT
+             ca.id,
+             ca.comment,
+             ca.assigned_at AS "assignedAt",
+             ca.unassigned_at AS "unassignedAt",
+             json_build_object('id', u.id, 'fullName', u.full_name, 'email', u.email) AS assignee,
+             CASE WHEN actor.id IS NULL THEN NULL ELSE json_build_object('id', actor.id, 'fullName', actor.full_name) END AS actor
+           FROM case_assignments ca
+           JOIN users u ON u.id = ca.user_id
+           LEFT JOIN users actor ON actor.id = ca.assigned_by
+           WHERE ca.case_id = $1
+           ORDER BY ca.assigned_at DESC, ca.id DESC`,
+          [request.params.id],
+        ),
+        query(
+          `SELECT
+             h.id,
+             h.comment,
+             h.created_at AS "createdAt",
+             CASE WHEN fs.id IS NULL THEN NULL ELSE json_build_object('code', fs.code, 'name', fs.name) END AS "fromStatus",
+             json_build_object('code', ts.code, 'name', ts.name, 'color', ts.color) AS "toStatus",
+             CASE WHEN u.id IS NULL THEN NULL ELSE json_build_object('id', u.id, 'fullName', u.full_name) END AS actor
+           FROM case_status_history h
+           LEFT JOIN case_statuses fs ON fs.id = h.from_status_id
+           JOIN case_statuses ts ON ts.id = h.to_status_id
+           LEFT JOIN users u ON u.id = h.changed_by
+           WHERE h.case_id = $1
+           ORDER BY h.created_at DESC, h.id DESC`,
+          [request.params.id],
+        ),
+      ]);
+      return {
+        case: item,
+        assignmentHistory: assignmentResult.rows,
+        statusHistory: statusResult.rows,
+      };
     },
   );
 
@@ -197,6 +281,11 @@ export async function caseRoutes(app) {
             body.openedDate,
             request.user.id,
           ],
+        );
+        await client.query(
+          `INSERT INTO case_status_history (case_id, to_status_id, comment, changed_by)
+           VALUES ($1, $2, 'Registro inicial del expediente.', $3)`,
+          [result.rows[0].id, statusId, request.user.id],
         );
         await writeAudit(client, request, {
           action: 'case.create',
@@ -284,6 +373,11 @@ export async function caseRoutes(app) {
           ],
         );
         await client.query(
+          `INSERT INTO case_status_history (case_id, to_status_id, comment, changed_by)
+           VALUES ($1, $2, 'Registro inicial por conversión de solicitud.', $3)`,
+          [caseResult.rows[0].id, statusId, request.user.id],
+        );
+        await client.query(
           'UPDATE legal_requests SET status_id = $1, updated_by = $2, updated_at = NOW() WHERE id = $3',
           [convertedStatus.rows[0].id, request.user.id, origin.id],
         );
@@ -314,6 +408,131 @@ export async function caseRoutes(app) {
         return caseResult.rows[0].id;
       });
       return reply.code(201).send({ case: await getCase({ query }, id) });
+    },
+  );
+
+  app.post(
+    '/:id/assign',
+    {
+      preHandler: [authenticate, requirePermission('cases.assign')],
+      schema: {
+        params: { type: 'object', required: ['id'], properties: { id: { type: 'string', format: 'uuid' } } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['userId'],
+          properties: {
+            userId: { type: 'string', format: 'uuid' },
+            comment: { type: 'string', maxLength: 500 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      await withTransaction(async (client) => {
+        const caseResult = await client.query('SELECT id FROM cases WHERE id = $1 FOR UPDATE', [request.params.id]);
+        if (caseResult.rowCount === 0) throw expectedError('Expediente no encontrado.', 404);
+        const userResult = await client.query(
+          `SELECT u.id
+           FROM users u
+           JOIN user_roles ur ON ur.user_id = u.id
+           JOIN roles r ON r.id = ur.role_id
+           WHERE u.id = $1 AND u.active = TRUE AND r.code IN ('lawyer', 'intern')
+           LIMIT 1`,
+          [request.body.userId],
+        );
+        if (userResult.rowCount === 0) {
+          throw expectedError('El responsable debe ser un abogado o practicante activo.');
+        }
+        const currentResult = await client.query(
+          'SELECT id, user_id AS "userId" FROM case_assignments WHERE case_id = $1 AND unassigned_at IS NULL FOR UPDATE',
+          [request.params.id],
+        );
+        if (currentResult.rows[0]?.userId === request.body.userId) {
+          throw expectedError('La persona seleccionada ya es responsable del expediente.');
+        }
+        if (currentResult.rowCount) {
+          await client.query('UPDATE case_assignments SET unassigned_at = NOW() WHERE id = $1', [currentResult.rows[0].id]);
+        }
+        await client.query(
+          `INSERT INTO case_assignments (case_id, user_id, assigned_by, comment)
+           VALUES ($1, $2, $3, $4)`,
+          [request.params.id, request.body.userId, request.user.id, cleanOptional(request.body.comment)],
+        );
+        await writeAudit(client, request, {
+          action: 'case.assignment_change',
+          entityType: 'case',
+          entityId: request.params.id,
+          details: { fromUserId: currentResult.rows[0]?.userId || null, toUserId: request.body.userId },
+        });
+      });
+      return reply.send({ case: await getCase({ query }, request.params.id) });
+    },
+  );
+
+  app.post(
+    '/:id/status',
+    {
+      preHandler: [authenticate, requirePermission('cases.write')],
+      schema: {
+        params: { type: 'object', required: ['id'], properties: { id: { type: 'string', format: 'uuid' } } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['statusCode'],
+          properties: {
+            statusCode: { type: 'string', enum: ['open', 'in_progress', 'on_hold', 'closed', 'archived'] },
+            comment: { type: 'string', maxLength: 500 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      await withTransaction(async (client) => {
+        const existingResult = await client.query(
+          `SELECT c.status_id AS "statusId", cs.code AS "statusCode"
+           FROM cases c
+           JOIN case_statuses cs ON cs.id = c.status_id
+           WHERE c.id = $1
+           FOR UPDATE`,
+          [request.params.id],
+        );
+        if (existingResult.rowCount === 0) throw expectedError('Expediente no encontrado.', 404);
+        const existing = existingResult.rows[0];
+        if (existing.statusCode === request.body.statusCode) {
+          throw expectedError('El expediente ya se encuentra en ese estado.');
+        }
+        if (!allowedStatusTransitions[existing.statusCode]?.includes(request.body.statusCode)) {
+          throw expectedError(`No se permite cambiar de ${existing.statusCode} a ${request.body.statusCode}.`);
+        }
+        if (request.body.statusCode === 'in_progress') {
+          const assignment = await client.query(
+            'SELECT 1 FROM case_assignments WHERE case_id = $1 AND unassigned_at IS NULL',
+            [request.params.id],
+          );
+          if (assignment.rowCount === 0) {
+            throw expectedError('Asigna un responsable antes de iniciar el trámite.');
+          }
+        }
+        const nextResult = await client.query('SELECT id, code FROM case_statuses WHERE code = $1', [request.body.statusCode]);
+        const next = nextResult.rows[0];
+        await client.query(
+          'UPDATE cases SET status_id = $1, updated_by = $2, updated_at = NOW() WHERE id = $3',
+          [next.id, request.user.id, request.params.id],
+        );
+        await client.query(
+          `INSERT INTO case_status_history (case_id, from_status_id, to_status_id, comment, changed_by)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [request.params.id, existing.statusId, next.id, cleanOptional(request.body.comment), request.user.id],
+        );
+        await writeAudit(client, request, {
+          action: 'case.status_change',
+          entityType: 'case',
+          entityId: request.params.id,
+          details: { from: existing.statusCode, to: next.code },
+        });
+      });
+      return reply.send({ case: await getCase({ query }, request.params.id) });
     },
   );
 
