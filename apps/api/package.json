@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "test": "node --test",
     "test:intake": "node scripts/validate-intake.js",
+    "test:requests": "node scripts/validate-requests.js",
     "test:roles": "node scripts/validate-roles.js",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js"

@@ -27,4 +27,17 @@ export async function catalogRoutes(app) {
       return { priorities: result.rows };
     },
   );
+
+  app.get(
+    '/request-statuses',
+    { preHandler: [authenticate, requirePermission('requests.read')] },
+    async () => {
+      const result = await query(
+        `SELECT id, code, name, description, color, sort_order AS "sortOrder", terminal
+         FROM request_statuses
+         ORDER BY sort_order, name`,
+      );
+      return { requestStatuses: result.rows };
+    },
+  );
 }

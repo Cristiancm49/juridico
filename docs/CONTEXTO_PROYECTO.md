@@ -89,7 +89,7 @@ No editar `node_modules`, `apps/web/dist` ni `tmp`.
 
 ## 7. Base de datos actual
 
-Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql` y `003_intake_foundation.sql`.
+Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql` y `004_legal_requests.sql`.
 
 Tablas:
 
@@ -103,6 +103,9 @@ Tablas:
 - `people`: personas naturales o jurídicas, documento único, contacto, ubicación, notas y estado.
 - `legal_areas`: catálogo inicial de áreas jurídicas, orden y estado.
 - `priorities`: cuatro niveles de prioridad con orden, color y estado.
+- `request_statuses`: estados controlados de una solicitud y su presentación visual.
+- `legal_requests`: consecutivo, persona, clasificación, asunto, descripción, canal, fecha y estado actual.
+- `legal_request_status_history`: transición, comentario, responsable y fecha de cada cambio de estado.
 - `schema_migrations`: migraciones ya aplicadas.
 
 Toda nueva tabla o columna requiere una nueva migración numerada. No modificar una migración aplicada.
@@ -173,6 +176,11 @@ Matriz inicial validada técnicamente:
 | `PATCH /api/v1/people/:id` | `requests.write` | Editar, activar o desactivar una persona |
 | `GET /api/v1/catalogs/legal-areas` | `requests.read` | Consultar áreas jurídicas |
 | `GET /api/v1/catalogs/priorities` | `requests.read` | Consultar prioridades |
+| `GET /api/v1/catalogs/request-statuses` | `requests.read` | Consultar estados de solicitud |
+| `GET /api/v1/requests` | `requests.read` | Buscar y filtrar solicitudes con paginación |
+| `GET /api/v1/requests/:id` | `requests.read` | Consultar una solicitud y su historial de estados |
+| `POST /api/v1/requests` | `requests.write` | Registrar una solicitud con consecutivo automático |
+| `PATCH /api/v1/requests/:id` | `requests.write` | Editar y cambiar el estado mediante transiciones permitidas |
 
 ## 11. Pantallas implementadas
 
@@ -185,6 +193,7 @@ Matriz inicial validada técnicamente:
 - Auditoría: búsqueda, acción, rango de fechas y paginación.
 - Personas y clientes: búsqueda, filtro por estado, registro, edición y activación/desactivación.
 - Áreas y prioridades: consulta adaptable de los catálogos iniciales.
+- Solicitudes: búsqueda, filtros, registro, edición, clasificación y línea de tiempo de estados.
 
 ## 12. Estado del backlog
 
@@ -204,8 +213,8 @@ Matriz inicial validada técnicamente:
 
 - [x] Personas/clientes.
 - [x] Áreas jurídicas y prioridades (consulta; catálogo inicial controlado).
-- [ ] Solicitudes de asesoría.
-- [ ] Estados de solicitud.
+- [x] Solicitudes de asesoría.
+- [x] Estados de solicitud e historial de transiciones.
 - [ ] Conversión de solicitud a expediente.
 - [ ] Consulta y edición básica de expedientes.
 
@@ -232,6 +241,7 @@ npm run db:seed
 npm run dev
 npm test
 npm run test:intake
+npm run test:requests
 npm run test:roles
 npm run build
 ```
@@ -240,7 +250,7 @@ npm run build
 
 - Campos definitivos de solicitudes y expedientes.
 - Confirmación funcional de las siete áreas jurídicas y cuatro prioridades iniciales antes de permitir su edición.
-- Estados y transiciones jurídicas permitidas.
+- Confirmación funcional de las transiciones iniciales de solicitudes: `received -> in_review/rejected`, `in_review -> approved/rejected`, `approved -> in_review`; `rejected` y `converted` son terminales.
 - Política definitiva de conservación de datos y documentos.
 - Proveedor de PostgreSQL y almacenamiento S3 para producción.
 - Matriz de permisos validada por KAFA y Asociados.
@@ -252,3 +262,4 @@ npm run build
 - 4 de agosto de 2026: contexto vivo, contraseña temporal obligatoria y consulta de auditoría.
 - 5 de agosto de 2026: matriz de los cuatro roles validada contra PostgreSQL y rutas protegidas; cierre técnico del Sprint 1.
 - 5 de agosto de 2026: personas/clientes, áreas jurídicas y prioridades implementadas; inicio del Sprint 2.
+- 5 de agosto de 2026: registro, clasificación, consulta e historial de estados de solicitudes implementados.

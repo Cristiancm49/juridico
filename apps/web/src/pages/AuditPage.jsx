@@ -13,6 +13,9 @@ const actionLabels = {
   'role.update': 'Rol actualizado',
   'person.create': 'Persona registrada',
   'person.update': 'Persona actualizada',
+  'request.create': 'Solicitud registrada',
+  'request.update': 'Solicitud actualizada',
+  'request.status_change': 'Estado de solicitud cambiado',
 };
 
 const emptyFilters = { search: '', action: '', from: '', to: '' };

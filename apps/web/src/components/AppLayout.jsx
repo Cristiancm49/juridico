@@ -1,4 +1,4 @@
-import { Bell, BookUser, BriefcaseBusiness, FileText, KeyRound, LayoutDashboard, ListTree, LogOut, Menu, ScrollText, ShieldCheck, Users, X } from 'lucide-react';
+import { Bell, BookUser, BriefcaseBusiness, ClipboardList, FileText, KeyRound, LayoutDashboard, ListTree, LogOut, Menu, ScrollText, ShieldCheck, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -26,7 +26,8 @@ export function AppLayout({ children, pathname }) {
   const nav = [
     { to: '/', label: 'Resumen', icon: LayoutDashboard, show: true, end: true },
     { to: '/personas', label: 'Personas y clientes', icon: BookUser, show: can('requests.read') },
-    { to: '/catalogos', label: 'Áreas y prioridades', icon: ListTree, show: can('requests.read') },
+    { to: '/solicitudes', label: 'Solicitudes', icon: ClipboardList, show: can('requests.read') },
+    { to: '/catalogos', label: 'Catálogos', icon: ListTree, show: can('requests.read') },
     { to: '/usuarios', label: 'Usuarios', icon: Users, show: can('users.read') },
     { to: '/roles', label: 'Roles y permisos', icon: ShieldCheck, show: can('roles.manage') },
     { to: '/auditoria', label: 'Auditoría', icon: ScrollText, show: can('audit.read') },
