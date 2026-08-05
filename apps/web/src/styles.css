@@ -211,6 +211,19 @@ tbody tr:hover { background: #fbfcfb; }
 .history-entry > div { display: grid; gap: 3px; }
 .history-entry strong { font-size: .75rem; }
 .history-entry span, .history-entry time { color: var(--muted); font-size: .66rem; }
+.convert-button { color: var(--green-700); background: #edf6f2; }
+
+.case-filters { display: grid; grid-template-columns: minmax(280px, 1.4fr) minmax(160px, .7fr) minmax(150px, .6fr) auto 42px; align-items: center; gap: 9px; padding: 17px; margin-bottom: 17px; }
+.case-filters .search-field { width: 100%; }
+.case-filters input, .case-filters select { min-height: 42px; }
+.cases-table { min-width: 1240px; }
+.case-reference { display: block; margin-top: 4px; color: #7c8985; font-size: .64rem; }
+.origin-badge { display: inline-flex; padding: 5px 8px; border-radius: 7px; background: #e9eff6; color: #45647b; font-size: .66rem; font-weight: 800; }
+.case-modal { width: min(850px, 100%); }
+.case-origin-note { display: flex; align-items: center; gap: 11px; padding: 13px 15px; margin-bottom: 18px; border: 1px solid #d8e5df; border-radius: 11px; background: #f1f7f4; color: var(--green-700); }
+.case-origin-note > div { display: grid; gap: 3px; }
+.case-origin-note strong { font-size: .77rem; }
+.case-origin-note span { color: var(--muted); font-size: .68rem; }
 
 .modal-layer { position: fixed; inset: 0; z-index: 100; background: rgba(10,35,31,.55); backdrop-filter: blur(3px); display: grid; place-items: center; padding: 22px; }
 .modal-card { background: white; border-radius: 20px; padding: 27px; width: min(650px, 100%); max-height: 90vh; overflow-y: auto; box-shadow: 0 30px 70px rgba(10,35,31,.25); }
@@ -281,6 +294,8 @@ legend { font-size: .72rem; font-weight: 800; color: #52615d; margin-bottom: 10p
   .audit-filters { grid-template-columns: 1fr 1fr; }
   .people-filters { grid-template-columns: 1fr 190px auto; }
   .request-filters { grid-template-columns: 1fr 1fr; }
+  .case-filters { grid-template-columns: 1fr 1fr; }
+  .case-filters > .icon-button { display: none; }
   .request-filters > .icon-button { display: none; }
   .people-filters > .icon-button { display: none; }
   .catalog-grid { grid-template-columns: 1fr; }
@@ -306,6 +321,7 @@ legend { font-size: .72rem; font-weight: 800; color: #52615d; margin-bottom: 10p
   .audit-filters { grid-template-columns: 1fr; }
   .people-filters { grid-template-columns: 1fr; }
   .request-filters { grid-template-columns: 1fr; }
+  .case-filters { grid-template-columns: 1fr; }
   .status-catalog { grid-template-columns: 1fr; }
   .filter-actions { justify-content: stretch; }
   .filter-actions .primary-button { flex: 1; }

@@ -8,6 +8,7 @@ import { query } from './db.js';
 import { authRoutes } from './routes/auth-routes.js';
 import { auditRoutes } from './routes/audit-routes.js';
 import { catalogRoutes } from './routes/catalog-routes.js';
+import { caseRoutes } from './routes/case-routes.js';
 import { peopleRoutes } from './routes/people-routes.js';
 import { requestRoutes } from './routes/request-routes.js';
 import { roleRoutes } from './routes/role-routes.js';
@@ -59,6 +60,7 @@ export async function buildApp(options = {}) {
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(auditRoutes, { prefix: '/api/v1/audit' });
   await app.register(catalogRoutes, { prefix: '/api/v1/catalogs' });
+  await app.register(caseRoutes, { prefix: '/api/v1/cases' });
   await app.register(peopleRoutes, { prefix: '/api/v1/people' });
   await app.register(requestRoutes, { prefix: '/api/v1/requests' });
   await app.register(userRoutes, { prefix: '/api/v1/users' });

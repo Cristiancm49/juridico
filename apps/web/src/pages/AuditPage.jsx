@@ -16,6 +16,9 @@ const actionLabels = {
   'request.create': 'Solicitud registrada',
   'request.update': 'Solicitud actualizada',
   'request.status_change': 'Estado de solicitud cambiado',
+  'request.convert': 'Solicitud convertida',
+  'case.create': 'Expediente creado',
+  'case.update': 'Expediente actualizado',
 };
 
 const emptyFilters = { search: '', action: '', from: '', to: '' };

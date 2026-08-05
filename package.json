@@ -10,6 +10,7 @@
     "dev": "concurrently -n API,WEB -c blue,green \"npm run dev --workspace @legaldesk/api\" \"npm run dev --workspace @legaldesk/web\"",
     "build": "npm run build --workspace @legaldesk/web",
     "test": "npm run test --workspaces --if-present",
+    "test:cases": "npm run test:cases --workspace @legaldesk/api",
     "test:intake": "npm run test:intake --workspace @legaldesk/api",
     "test:requests": "npm run test:requests --workspace @legaldesk/api",
     "test:roles": "npm run test:roles --workspace @legaldesk/api",

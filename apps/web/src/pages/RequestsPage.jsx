@@ -1,8 +1,9 @@
-import { Edit3, FilePlus2, RefreshCw, Search, X } from 'lucide-react';
+import { BriefcaseBusiness, Edit3, FilePlus2, RefreshCw, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { navigate } from '../router.js';
 
 const sourceLabels = {
   in_person: 'Presencial',
@@ -46,6 +47,7 @@ export function RequestsPage() {
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0 });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [convertingId, setConvertingId] = useState(null);
   const [editing, setEditing] = useState(null);
   const [history, setHistory] = useState([]);
   const [form, setForm] = useState(emptyForm());
@@ -152,6 +154,23 @@ export function RequestsPage() {
     setAppliedFilters(filters);
   }
 
+  async function convertToCase(item) {
+    if (!window.confirm(`¿Convertir ${item.requestNumber} en un expediente?`)) return;
+    setConvertingId(item.id);
+    try {
+      const data = await apiFetch(`/api/v1/cases/from-request/${item.id}`, {
+        method: 'POST',
+        body: JSON.stringify({ openedDate: new Date().toISOString().slice(0, 10) }),
+      });
+      toast.success(`Expediente ${data.case.caseNumber} creado correctamente.`);
+      navigate('/expedientes');
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setConvertingId(null);
+    }
+  }
+
   const currentStatus = editing?.request?.status.code;
   const allowedStatusCodes = currentStatus
     ? [currentStatus, ...(transitions[currentStatus] || [])]
@@ -189,7 +208,7 @@ export function RequestsPage() {
                   <td><span className="priority-badge"><i style={{ backgroundColor: item.priority.color }} />{item.priority.name}</span></td>
                   <td><span className="request-status" style={{ color: item.status.color, backgroundColor: `${item.status.color}14` }}>{item.status.name}</span></td>
                   <td>{new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${item.receivedDate}T00:00:00Z`))}</td>
-                  <td className="actions-cell">{can('requests.write') && <button className="icon-button" onClick={() => openEdit(item)} aria-label={`Editar ${item.requestNumber}`} title="Editar y ver historial"><Edit3 size={18} /></button>}</td>
+                  <td className="actions-cell"><div className="row-actions">{item.status.code === 'approved' && can('cases.write') && <button className="icon-button convert-button" disabled={convertingId === item.id} onClick={() => convertToCase(item)} aria-label={`Convertir ${item.requestNumber} en expediente`} title="Convertir en expediente"><BriefcaseBusiness size={18} /></button>}{can('requests.write') && <button className="icon-button" onClick={() => openEdit(item)} aria-label={`Editar ${item.requestNumber}`} title="Editar y ver historial"><Edit3 size={18} /></button>}</div></td>
                 </tr>
               ))}
               {!loading && requests.length === 0 && <tr><td colSpan="7" className="empty-cell">No hay solicitudes que coincidan con los filtros.</td></tr>}

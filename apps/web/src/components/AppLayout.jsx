@@ -27,6 +27,7 @@ export function AppLayout({ children, pathname }) {
     { to: '/', label: 'Resumen', icon: LayoutDashboard, show: true, end: true },
     { to: '/personas', label: 'Personas y clientes', icon: BookUser, show: can('requests.read') },
     { to: '/solicitudes', label: 'Solicitudes', icon: ClipboardList, show: can('requests.read') },
+    { to: '/expedientes', label: 'Expedientes', icon: BriefcaseBusiness, show: can('cases.read') },
     { to: '/catalogos', label: 'Catálogos', icon: ListTree, show: can('requests.read') },
     { to: '/usuarios', label: 'Usuarios', icon: Users, show: can('users.read') },
     { to: '/roles', label: 'Roles y permisos', icon: ShieldCheck, show: can('roles.manage') },
@@ -62,7 +63,6 @@ export function AppLayout({ children, pathname }) {
             </a>
           ))}
           <div className="nav-divider">Próximamente</div>
-          <span className="nav-disabled"><BriefcaseBusiness size={19} /> Expedientes</span>
           <span className="nav-disabled"><FileText size={19} /> Documentos</span>
         </nav>
 

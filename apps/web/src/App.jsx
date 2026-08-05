@@ -3,6 +3,7 @@ import { useAuth } from './auth/AuthContext.jsx';
 import { AppLayout } from './components/AppLayout.jsx';
 import { AuditPage } from './pages/AuditPage.jsx';
 import { CatalogsPage } from './pages/CatalogsPage.jsx';
+import { CasesPage } from './pages/CasesPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { PeoplePage } from './pages/PeoplePage.jsx';
@@ -28,6 +29,7 @@ export function App() {
     '/personas': 'requests.read',
     '/catalogos': 'requests.read',
     '/solicitudes': 'requests.read',
+    '/expedientes': 'cases.read',
     '/usuarios': 'users.read',
     '/roles': 'roles.manage',
     '/auditoria': 'audit.read',
@@ -50,6 +52,7 @@ export function App() {
     '/personas': <PeoplePage />,
     '/catalogos': <CatalogsPage />,
     '/solicitudes': <RequestsPage />,
+    '/expedientes': <CasesPage />,
     '/usuarios': <UsersPage />,
     '/roles': <RolesPage />,
     '/auditoria': <AuditPage />,

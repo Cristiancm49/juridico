@@ -1,7 +1,7 @@
 # Contexto vivo de LegalDesk
 
 Última actualización: 5 de agosto de 2026  
-Estado: Sprint 1 completado; Sprint 2 en curso
+Estado: Sprints 1 y 2 completados; Sprint 3 listo para iniciar
 
 > Leer este archivo antes de implementar una funcionalidad. Actualizarlo cuando cambien la arquitectura, la base de datos, los permisos, las rutas o el estado del backlog.
 
@@ -89,7 +89,7 @@ No editar `node_modules`, `apps/web/dist` ni `tmp`.
 
 ## 7. Base de datos actual
 
-Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql` y `004_legal_requests.sql`.
+Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql`, `004_legal_requests.sql` y `005_cases.sql`.
 
 Tablas:
 
@@ -106,6 +106,8 @@ Tablas:
 - `request_statuses`: estados controlados de una solicitud y su presentación visual.
 - `legal_requests`: consecutivo, persona, clasificación, asunto, descripción, canal, fecha y estado actual.
 - `legal_request_status_history`: transición, comentario, responsable y fecha de cada cambio de estado.
+- `case_statuses`: catálogo extensible; actualmente contiene el estado inicial `open`.
+- `cases`: consecutivo, origen opcional, persona, clasificación, datos jurídicos básicos y estado actual.
 - `schema_migrations`: migraciones ya aplicadas.
 
 Toda nueva tabla o columna requiere una nueva migración numerada. No modificar una migración aplicada.
@@ -181,6 +183,11 @@ Matriz inicial validada técnicamente:
 | `GET /api/v1/requests/:id` | `requests.read` | Consultar una solicitud y su historial de estados |
 | `POST /api/v1/requests` | `requests.write` | Registrar una solicitud con consecutivo automático |
 | `PATCH /api/v1/requests/:id` | `requests.write` | Editar y cambiar el estado mediante transiciones permitidas |
+| `GET /api/v1/cases` | `cases.read` | Buscar y filtrar expedientes con paginación |
+| `GET /api/v1/cases/:id` | `cases.read` | Consultar la ficha básica de un expediente |
+| `POST /api/v1/cases` | `cases.write` | Crear un expediente manual con consecutivo automático |
+| `POST /api/v1/cases/from-request/:requestId` | `requests.write` + `cases.write` | Convertir una solicitud aprobada sin duplicar datos |
+| `PATCH /api/v1/cases/:id` | `cases.write` | Editar los datos básicos del expediente |
 
 ## 11. Pantallas implementadas
 
@@ -194,6 +201,8 @@ Matriz inicial validada técnicamente:
 - Personas y clientes: búsqueda, filtro por estado, registro, edición y activación/desactivación.
 - Áreas y prioridades: consulta adaptable de los catálogos iniciales.
 - Solicitudes: búsqueda, filtros, registro, edición, clasificación y línea de tiempo de estados.
+- Expedientes: búsqueda, filtros, creación manual, edición y vínculo con la solicitud de origen.
+- Conversión: acción disponible en solicitudes aprobadas para usuarios con `cases.write`.
 
 ## 12. Estado del backlog
 
@@ -209,14 +218,22 @@ Matriz inicial validada técnicamente:
 - [x] Pruebas finales por rol.
 - [x] Primera versión estable local (`0.1.0`).
 
-### Sprint 2 - siguiente
+### Sprint 2 - solicitudes y expedientes
 
 - [x] Personas/clientes.
 - [x] Áreas jurídicas y prioridades (consulta; catálogo inicial controlado).
 - [x] Solicitudes de asesoría.
 - [x] Estados de solicitud e historial de transiciones.
-- [ ] Conversión de solicitud a expediente.
-- [ ] Consulta y edición básica de expedientes.
+- [x] Conversión de solicitud a expediente sin duplicar datos.
+- [x] Consulta y edición básica de expedientes.
+- [x] Pruebas finales de integridad y permisos.
+
+### Sprint 3 - siguiente
+
+- [ ] Asignar y reasignar responsables.
+- [ ] Estados del expediente e historial de transiciones.
+- [ ] Actuaciones y avances jurídicos.
+- [ ] Búsqueda y filtros ampliados por responsable y estado.
 
 Los sprints posteriores están detallados en `docs/analisis-y-plan-legaldesk.md`.
 
@@ -240,6 +257,7 @@ npm run db:migrate
 npm run db:seed
 npm run dev
 npm test
+npm run test:cases
 npm run test:intake
 npm run test:requests
 npm run test:roles
@@ -248,7 +266,7 @@ npm run build
 
 ## 15. Decisiones todavía abiertas
 
-- Campos definitivos de solicitudes y expedientes.
+- Confirmación funcional de los campos básicos del expediente: asunto, descripción, radicado externo, despacho/entidad y fecha de apertura.
 - Confirmación funcional de las siete áreas jurídicas y cuatro prioridades iniciales antes de permitir su edición.
 - Confirmación funcional de las transiciones iniciales de solicitudes: `received -> in_review/rejected`, `in_review -> approved/rejected`, `approved -> in_review`; `rejected` y `converted` son terminales.
 - Política definitiva de conservación de datos y documentos.
@@ -263,3 +281,4 @@ npm run build
 - 5 de agosto de 2026: matriz de los cuatro roles validada contra PostgreSQL y rutas protegidas; cierre técnico del Sprint 1.
 - 5 de agosto de 2026: personas/clientes, áreas jurídicas y prioridades implementadas; inicio del Sprint 2.
 - 5 de agosto de 2026: registro, clasificación, consulta e historial de estados de solicitudes implementados.
+- 5 de agosto de 2026: expedientes, conversión sin duplicados y pruebas integrales; cierre técnico del Sprint 2.
