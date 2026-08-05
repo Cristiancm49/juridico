@@ -23,7 +23,7 @@ import { userRoutes } from './routes/user-routes.js';
 export async function buildApp(options = {}) {
   const app = Fastify({
     logger: options.logger ?? config.nodeEnv !== 'test',
-    trustProxy: true,
+    trustProxy: config.trustProxy,
   });
 
   app.decorateRequest('user', null);

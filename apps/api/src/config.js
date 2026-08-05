@@ -14,6 +14,7 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: numberFromEnv(process.env.API_PORT, 3100),
   webOrigin: process.env.WEB_ORIGIN || 'http://localhost:5173',
+  trustProxy: process.env.TRUST_PROXY === 'true',
   databaseUrl:
     process.env.DATABASE_URL ||
     'postgresql://legaldesk:legaldesk@127.0.0.1:55432/legaldesk',
@@ -29,5 +30,13 @@ export const config = {
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== 'false',
   },
 };
+
+if (config.nodeEnv === 'production') {
+  const required = ['DATABASE_URL', 'S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY', 'S3_SECRET_KEY'];
+  const missing = required.filter((name) => !process.env[name]);
+  if (missing.length) throw new Error(`Faltan variables obligatorias de producción: ${missing.join(', ')}.`);
+  if (!config.cookieSecure) throw new Error('COOKIE_SECURE debe ser true en producción.');
+  if (!config.webOrigin.startsWith('https://')) throw new Error('WEB_ORIGIN debe usar HTTPS en producción.');
+}
 
 export const SESSION_COOKIE = 'legaldesk_session';

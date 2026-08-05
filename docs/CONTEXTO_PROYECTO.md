@@ -1,7 +1,7 @@
 # Contexto vivo de LegalDesk
 
 Última actualización: 5 de agosto de 2026  
-Estado: Sprints 1, 2, 3, 4, 5 y 6 completados; Sprint 7 listo para iniciar
+Estado: Sprints 1, 2, 3, 4, 5 y 6 completados; Sprint 7 en curso, pendiente de ambiente y aceptación del sponsor
 
 > Leer este archivo antes de implementar una funcionalidad. Actualizarlo cuando cambien la arquitectura, la base de datos, los permisos, las rutas o el estado del backlog.
 
@@ -23,6 +23,8 @@ La primera versión prioriza simplicidad, trazabilidad y seguridad. No incluye p
 - Autenticación propia mediante sesiones opacas en cookies; no JWT en el navegador.
 - Archivos en almacenamiento privado compatible con S3 mediante AWS SDK; MinIO se usa localmente y PostgreSQL guarda solo metadatos.
 - Alertas diferidas mediante `pg-boss` sobre PostgreSQL; no Redis, WebSockets ni servicios de mensajería externos en el MVP.
+- En producción el arranque falla si faltan secretos esenciales, si `COOKIE_SECURE` no es `true` o si `WEB_ORIGIN` no usa HTTPS.
+- `TRUST_PROXY` es `false` por defecto y solo se habilita cuando el API está aislado detrás del proxy autorizado.
 
 ## 3. Topología local
 
@@ -319,13 +321,15 @@ Medición local de cierre del sprint: resumen `36 ms` y exportación CSV `28 ms`
 
 ### Sprint 7 - estabilización y entrega
 
-- [ ] Pruebas integrales y criterios de aceptación RF-01 a RF-16.
-- [ ] Revisión de seguridad y corrección de hallazgos críticos.
-- [ ] Procedimiento comprobado de respaldo y restauración de PostgreSQL y MinIO.
+- [x] Pruebas integrales y matriz técnica de aceptación RF-01 a RF-16.
+- [x] Revisión automatizada de sesión, cabeceras, autorización, validación, límite de acceso y dependencias.
+- [x] Procedimiento comprobado de respaldo y restauración de PostgreSQL y MinIO, incluyendo un objeto real temporal.
 - [ ] Configuración documentada para ambiente de pruebas y producción, sin desplegar hasta recibir autorización.
-- [ ] Monitoreo, logs y procedimiento de reversión.
-- [ ] Manual técnico, manual de usuario y guía de operación.
+- [ ] Monitoreo centralizado del ambiente; salud, logs y procedimiento de reversión local ya están documentados.
+- [x] Manual técnico, manual de usuario y guía de operación.
 - [ ] Lista de aceptación y cierre.
+
+Documentos de entrega actuales: `docs/MANUAL_TECNICO.md`, `docs/MANUAL_USUARIO.md` y `docs/MATRIZ_ACEPTACION.md`. La matriz no sustituye la aprobación del sponsor.
 
 Los sprints posteriores están detallados en `docs/analisis-y-plan-legaldesk.md`.
 
@@ -355,12 +359,15 @@ npm run test:documents
 npm run test:tasks
 npm run test:reports
 npm run test:performance
+npm run test:security
+npm run test:backup
 npm run test:cases
 npm run test:intake
 npm run test:requests
 npm run test:roles
 npm run build
 npm run worker
+npm run backup
 ```
 
 ## 15. Decisiones todavía abiertas
@@ -376,6 +383,7 @@ npm run worker
 - Confirmación funcional de las transiciones iniciales de solicitudes: `received -> in_review/rejected`, `in_review -> approved/rejected`, `approved -> in_review`; `rejected` y `converted` son terminales.
 - Política definitiva de conservación de datos y documentos.
 - Proveedor de PostgreSQL y almacenamiento S3 para producción.
+- Ambiente de pruebas/producción, proxy HTTPS, destino externo cifrado de respaldos y plataforma de monitoreo.
 - Matriz de permisos validada por KAFA y Asociados.
 - Confirmación funcional de los indicadores y columnas del CSV antes de congelar el formato para usuarios finales.
 
@@ -393,3 +401,4 @@ npm run worker
 - 5 de agosto de 2026: documentos privados en MinIO, metadatos, hash, versiones y descargas autorizadas; cierre técnico del Sprint 4.
 - 5 de agosto de 2026: tareas, vencimientos, trabajador `pg-boss`, alertas idempotentes y centro de notificaciones; cierre técnico del Sprint 5.
 - 5 de agosto de 2026: reportes filtrables, tablero jurídico, CSV auditado y prueba de rendimiento con 1.000 expedientes y 2.000 tareas; cierre técnico del Sprint 6.
+- 5 de agosto de 2026: respaldo/restauración comprobados para PostgreSQL y MinIO, controles de arranque seguro, prueba de seguridad, manuales y matriz técnica de aceptación; Sprint 7 queda pendiente de ambiente y aprobación funcional.

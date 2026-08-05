@@ -33,6 +33,14 @@ La consola local de almacenamiento estará en `http://localhost:59001`; no debe 
 
 Antes de añadir una funcionalidad, revisar [docs/CONTEXTO_PROYECTO.md](docs/CONTEXTO_PROYECTO.md). Es el resumen vivo de arquitectura, base de datos, rutas, permisos, convenciones y estado del backlog.
 
+Documentación de entrega:
+
+- [Manual técnico](docs/MANUAL_TECNICO.md)
+- [Manual de usuario](docs/MANUAL_USUARIO.md)
+- [Matriz de aceptación](docs/MATRIZ_ACEPTACION.md)
+
+Para generar un respaldo local de PostgreSQL y MinIO ejecuta `npm run backup`. La restauración exige destinos explícitos y se documenta en el manual técnico.
+
 ## Seguridad inicial
 
 - Contraseñas protegidas con Argon2id.
