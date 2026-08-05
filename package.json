@@ -1,0 +1,21 @@
+{
+  "name": "legaldesk",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n API,WEB -c blue,green \"npm run dev --workspace @legaldesk/api\" \"npm run dev --workspace @legaldesk/web\"",
+    "build": "npm run build --workspace @legaldesk/web",
+    "test": "npm run test --workspaces --if-present",
+    "test:roles": "npm run test:roles --workspace @legaldesk/api",
+    "db:migrate": "npm run db:migrate --workspace @legaldesk/api",
+    "db:seed": "npm run db:seed --workspace @legaldesk/api",
+    "start": "npm run start --workspace @legaldesk/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}
