@@ -6,6 +6,7 @@ import rateLimit from '@fastify/rate-limit';
 import { config } from './config.js';
 import { query } from './db.js';
 import { authRoutes } from './routes/auth-routes.js';
+import { actionRoutes } from './routes/action-routes.js';
 import { auditRoutes } from './routes/audit-routes.js';
 import { catalogRoutes } from './routes/catalog-routes.js';
 import { caseRoutes } from './routes/case-routes.js';
@@ -58,6 +59,7 @@ export async function buildApp(options = {}) {
   });
 
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  await app.register(actionRoutes, { prefix: '/api/v1/cases' });
   await app.register(auditRoutes, { prefix: '/api/v1/audit' });
   await app.register(catalogRoutes, { prefix: '/api/v1/catalogs' });
   await app.register(caseRoutes, { prefix: '/api/v1/cases' });

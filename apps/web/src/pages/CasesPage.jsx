@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Edit3, Eye, Plus, RefreshCw, Search, UserRoundCheck, Workflow, X } from 'lucide-react';
+import { Activity, BriefcaseBusiness, Edit3, Eye, Plus, RefreshCw, Search, UserRoundCheck, Workflow, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch } from '../api.js';
@@ -14,6 +14,22 @@ function emptyForm() {
     externalReference: '',
     authority: '',
     openedDate: new Date().toISOString().slice(0, 10),
+  };
+}
+
+function localDateTime(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+function emptyActionForm(actionTypeId = '') {
+  return {
+    actionTypeId,
+    title: '',
+    description: '',
+    result: '',
+    occurredAt: localDateTime(),
   };
 }
 
@@ -33,6 +49,7 @@ export function CasesPage() {
   const [priorities, setPriorities] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [assignees, setAssignees] = useState([]);
+  const [actionTypes, setActionTypes] = useState([]);
   const [filters, setFilters] = useState({ search: '', legalAreaId: '', priorityId: '', status: '', assignee: '' });
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0 });
@@ -45,6 +62,10 @@ export function CasesPage() {
   const [assignmentForm, setAssignmentForm] = useState({ userId: '', comment: '' });
   const [statusForm, setStatusForm] = useState({ statusCode: '', comment: '' });
   const [trackingSaving, setTrackingSaving] = useState(false);
+  const [actions, setActions] = useState([]);
+  const [actionEditing, setActionEditing] = useState(null);
+  const [actionForm, setActionForm] = useState(emptyActionForm());
+  const [actionSaving, setActionSaving] = useState(false);
 
   const loadCases = useCallback(async (page = 1, activeFilters = appliedFilters) => {
     setLoading(true);
@@ -75,13 +96,15 @@ export function CasesPage() {
       apiFetch('/api/v1/catalogs/priorities'),
       apiFetch('/api/v1/catalogs/case-statuses'),
       apiFetch('/api/v1/cases/assignees'),
+      apiFetch('/api/v1/catalogs/action-types'),
     ])
-      .then(([peopleData, areaData, priorityData, statusData, assigneeData]) => {
+      .then(([peopleData, areaData, priorityData, statusData, assigneeData, actionTypeData]) => {
         setPeople(peopleData.people);
         setAreas(areaData.legalAreas);
         setPriorities(priorityData.priorities);
         setStatuses(statusData.caseStatuses);
         setAssignees(assigneeData.assignees);
+        setActionTypes(actionTypeData.actionTypes.filter(({ active }) => active));
       })
       .catch((error) => toast.error(error.message));
   }, []);
@@ -95,6 +118,8 @@ export function CasesPage() {
       return;
     }
     setEditing({ mode: 'create' });
+    setActions([]);
+    setActionEditing(null);
     setForm({
       ...emptyForm(),
       personId: activePeople[0].id,
@@ -105,11 +130,16 @@ export function CasesPage() {
 
   async function openEdit(item) {
     try {
-      const data = await apiFetch(`/api/v1/cases/${item.id}`);
+      const [data, actionData] = await Promise.all([
+        apiFetch(`/api/v1/cases/${item.id}`),
+        apiFetch(`/api/v1/cases/${item.id}/actions?limit=50`),
+      ]);
       const detail = data.case;
       setEditing({ mode: 'edit', case: detail });
       setAssignmentHistory(data.assignmentHistory);
       setStatusHistory(data.statusHistory);
+      setActions(actionData.actions);
+      setActionEditing(null);
       setAssignmentForm({ userId: detail.assignee?.id || assignees[0]?.id || '', comment: '' });
       setStatusForm({ statusCode: detail.status.code, comment: '' });
       setForm({
@@ -155,6 +185,55 @@ export function CasesPage() {
     setAssignmentForm({ userId: data.case.assignee?.id || assignees[0]?.id || '', comment: '' });
     setStatusForm({ statusCode: data.case.status.code, comment: '' });
     await loadCases(pagination.page);
+  }
+
+  async function loadActions(caseId) {
+    const data = await apiFetch(`/api/v1/cases/${caseId}/actions?limit=50`);
+    setActions(data.actions);
+  }
+
+  function startNewAction() {
+    const firstType = actionTypes[0];
+    if (!firstType) {
+      toast.error('No hay tipos de actuación activos.');
+      return;
+    }
+    setActionEditing({ mode: 'create' });
+    setActionForm(emptyActionForm(firstType.id));
+  }
+
+  function startEditAction(action) {
+    setActionEditing({ mode: 'edit', id: action.id });
+    setActionForm({
+      actionTypeId: action.actionType.id,
+      title: action.title,
+      description: action.description,
+      result: action.result || '',
+      occurredAt: localDateTime(action.occurredAt),
+    });
+  }
+
+  async function saveAction() {
+    if (!actionForm.actionTypeId || !actionForm.title.trim() || !actionForm.description.trim() || !actionForm.occurredAt) {
+      toast.error('Completa el tipo, la fecha, el título y la descripción.');
+      return;
+    }
+    setActionSaving(true);
+    try {
+      const payload = { ...actionForm, occurredAt: new Date(actionForm.occurredAt).toISOString() };
+      const isCreate = actionEditing.mode === 'create';
+      const url = isCreate
+        ? `/api/v1/cases/${editing.case.id}/actions`
+        : `/api/v1/cases/${editing.case.id}/actions/${actionEditing.id}`;
+      await apiFetch(url, { method: isCreate ? 'POST' : 'PATCH', body: JSON.stringify(payload) });
+      toast.success(isCreate ? 'Actuación registrada correctamente.' : 'Actuación actualizada correctamente.');
+      setActionEditing(null);
+      await loadActions(editing.case.id);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setActionSaving(false);
+    }
   }
 
   async function assignCase() {
@@ -277,6 +356,41 @@ export function CasesPage() {
               <label>Fecha de apertura<input type="date" value={form.openedDate} onChange={(event) => setForm({ ...form, openedDate: event.target.value })} required /></label>
               <label className="full">Descripción del asunto<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required minLength="10" maxLength="5000" rows="5" /></label>
             </fieldset>
+            {editing.mode === 'edit' && (
+              <section className="actions-section">
+                <div className="actions-head">
+                  <div><span className="eyebrow">TRAZABILIDAD DEL ASUNTO</span><h3><Activity size={18} /> Actuaciones y avances</h3><p>Registro cronológico del trabajo realizado en este expediente.</p></div>
+                  {can('actions.write') && editing.case.status.code !== 'archived' && !actionEditing && <button type="button" className="secondary-button" onClick={startNewAction}><Plus size={16} /> Nueva actuación</button>}
+                </div>
+                {actionEditing && (
+                  <div className="action-editor">
+                    <div className="action-editor-title"><strong>{actionEditing.mode === 'create' ? 'Registrar actuación' : 'Editar actuación'}</strong><span>Los cambios quedarán registrados en auditoría.</span></div>
+                    <div className="action-form-grid">
+                      <label>Tipo<select value={actionForm.actionTypeId} onChange={(event) => setActionForm({ ...actionForm, actionTypeId: event.target.value })}>{actionTypes.map((type) => <option value={type.id} key={type.id}>{type.name}</option>)}</select></label>
+                      <label>Fecha y hora<input type="datetime-local" value={actionForm.occurredAt} onChange={(event) => setActionForm({ ...actionForm, occurredAt: event.target.value })} /></label>
+                      <label className="full">Título<input value={actionForm.title} onChange={(event) => setActionForm({ ...actionForm, title: event.target.value })} minLength="5" maxLength="180" /></label>
+                      <label className="full">Descripción<textarea value={actionForm.description} onChange={(event) => setActionForm({ ...actionForm, description: event.target.value })} minLength="10" maxLength="5000" rows="3" /></label>
+                      <label className="full">Resultado <small className="optional-label">Opcional</small><textarea value={actionForm.result} onChange={(event) => setActionForm({ ...actionForm, result: event.target.value })} maxLength="2000" rows="2" /></label>
+                    </div>
+                    <div className="action-editor-buttons"><button type="button" className="secondary-button" onClick={() => setActionEditing(null)} disabled={actionSaving}>Cancelar</button><button type="button" className="primary-button" onClick={saveAction} disabled={actionSaving}>{actionSaving ? 'Guardando…' : 'Guardar actuación'}</button></div>
+                  </div>
+                )}
+                <div className="action-timeline">
+                  {actions.map((action) => (
+                    <article className="action-entry" key={action.id}>
+                      <div className="action-marker" style={{ backgroundColor: action.actionType.color }}><Activity size={14} /></div>
+                      <div className="action-body">
+                        <div className="action-title-row"><div><span className="action-type" style={{ color: action.actionType.color }}>{action.actionType.name}</span><h4>{action.title}</h4></div>{can('actions.write') && editing.case.status.code !== 'archived' && !actionEditing && <button type="button" className="icon-button" onClick={() => startEditAction(action)} aria-label={`Editar actuación ${action.title}`} title="Editar actuación"><Edit3 size={16} /></button>}</div>
+                        <p>{action.description}</p>
+                        {action.result && <div className="action-result"><strong>Resultado</strong><span>{action.result}</span></div>}
+                        <div className="action-meta"><span>{action.author?.fullName || 'Usuario eliminado'}</span><time>{new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(action.occurredAt))}</time></div>
+                      </div>
+                    </article>
+                  ))}
+                  {!actions.length && <p className="tracking-empty action-empty">Aún no se han registrado actuaciones en este expediente.</p>}
+                </div>
+              </section>
+            )}
             {editing.mode === 'edit' && <div className="case-history-grid"><section className="status-history"><h3>Historial de responsables</h3>{assignmentHistory.length ? assignmentHistory.map((entry) => <div className="history-entry" key={entry.id}><i className="assignment-dot" /><div><strong>{entry.assignee.fullName}</strong><span>{entry.comment || 'Sin comentario'} · Asignó {entry.actor?.fullName || 'Usuario eliminado'}</span></div><time>{new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.assignedAt))}</time></div>) : <p className="tracking-empty">Aún no hay asignaciones.</p>}</section><section className="status-history"><h3>Historial de estados</h3>{statusHistory.map((entry) => <div className="history-entry" key={entry.id}><i style={{ backgroundColor: entry.toStatus.color }} /><div><strong>{entry.toStatus.name}</strong><span>{entry.comment || 'Sin comentario'} · {entry.actor?.fullName || 'Usuario eliminado'}</span></div><time>{new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.createdAt))}</time></div>)}</section></div>}
             <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditing(null)}>{can('cases.write') ? 'Cancelar' : 'Cerrar'}</button>{can('cases.write') && <button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar expediente'}</button>}</div>
           </form>

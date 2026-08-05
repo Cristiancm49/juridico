@@ -9,6 +9,7 @@
     "test": "node --test",
     "test:cases": "node scripts/validate-cases.js",
     "test:case-tracking": "node scripts/validate-case-tracking.js",
+    "test:actions": "node scripts/validate-actions.js",
     "test:intake": "node scripts/validate-intake.js",
     "test:requests": "node scripts/validate-requests.js",
     "test:roles": "node scripts/validate-roles.js",

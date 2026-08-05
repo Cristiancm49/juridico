@@ -1,7 +1,7 @@
 # Contexto vivo de LegalDesk
 
 Última actualización: 5 de agosto de 2026  
-Estado: Sprints 1 y 2 completados; Sprint 3 en curso
+Estado: Sprints 1, 2 y 3 completados; Sprint 4 listo para iniciar
 
 > Leer este archivo antes de implementar una funcionalidad. Actualizarlo cuando cambien la arquitectura, la base de datos, los permisos, las rutas o el estado del backlog.
 
@@ -89,7 +89,7 @@ No editar `node_modules`, `apps/web/dist` ni `tmp`.
 
 ## 7. Base de datos actual
 
-Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql`, `004_legal_requests.sql`, `005_cases.sql` y `006_case_tracking.sql`.
+Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql`, `004_legal_requests.sql`, `005_cases.sql`, `006_case_tracking.sql` y `007_legal_actions.sql`.
 
 Tablas:
 
@@ -110,6 +110,8 @@ Tablas:
 - `cases`: consecutivo, origen opcional, persona, clasificación, datos jurídicos básicos y estado actual.
 - `case_assignments`: responsable actual e historial de asignaciones/reasignaciones.
 - `case_status_history`: transición, comentario, responsable y fecha de cada cambio de estado.
+- `action_types`: catálogo ordenado de tipos de actuación jurídica, color y estado.
+- `legal_actions`: línea de tiempo del expediente con tipo, fecha efectiva, descripción, resultado y autor.
 - `schema_migrations`: migraciones ya aplicadas.
 
 Toda nueva tabla o columna requiere una nueva migración numerada. No modificar una migración aplicada.
@@ -192,8 +194,12 @@ Matriz inicial validada técnicamente:
 | `PATCH /api/v1/cases/:id` | `cases.write` | Editar los datos básicos del expediente |
 | `GET /api/v1/cases/assignees` | `cases.read` | Consultar abogados y practicantes activos asignables |
 | `GET /api/v1/catalogs/case-statuses` | `cases.read` | Consultar estados del expediente |
+| `GET /api/v1/catalogs/action-types` | `cases.read` | Consultar tipos activos e inactivos de actuación |
 | `POST /api/v1/cases/:id/assign` | `cases.assign` | Asignar o reasignar el responsable actual |
 | `POST /api/v1/cases/:id/status` | `cases.write` | Cambiar estado mediante una transición permitida |
+| `GET /api/v1/cases/:caseId/actions` | `cases.read` | Consultar actuaciones por expediente, tipo y página |
+| `POST /api/v1/cases/:caseId/actions` | `actions.write` | Registrar una actuación en un expediente no archivado |
+| `PATCH /api/v1/cases/:caseId/actions/:actionId` | `actions.write` | Editar una actuación en un expediente no archivado |
 
 ## 11. Pantallas implementadas
 
@@ -210,6 +216,7 @@ Matriz inicial validada técnicamente:
 - Expedientes: búsqueda, filtros, creación manual, edición y vínculo con la solicitud de origen.
 - Conversión: acción disponible en solicitudes aprobadas para usuarios con `cases.write`.
 - Seguimiento de expedientes: responsable actual, reasignación, filtros e historiales de asignación y estado.
+- Actuaciones jurídicas: registro y edición, tipo, fecha efectiva, resultado opcional y línea de tiempo adaptable en la ficha del expediente.
 
 ## 12. Estado del backlog
 
@@ -235,12 +242,21 @@ Matriz inicial validada técnicamente:
 - [x] Consulta y edición básica de expedientes.
 - [x] Pruebas finales de integridad y permisos.
 
-### Sprint 3 - siguiente
+### Sprint 3 - seguimiento
 
 - [x] Asignar y reasignar responsables.
 - [x] Estados del expediente e historial de transiciones.
-- [ ] Actuaciones y avances jurídicos.
+- [x] Actuaciones y avances jurídicos.
 - [x] Búsqueda y filtros ampliados por responsable y estado.
+
+### Sprint 4 - documentos
+
+- [ ] Integración con almacenamiento privado compatible con S3.
+- [ ] Carga segura con validación de tipo, tamaño, nombre y hash.
+- [ ] Metadatos y relación del documento con el expediente.
+- [ ] Descarga autorizada sin exponer públicamente el archivo.
+- [ ] Versionado lógico y clasificación de documentos internos.
+- [ ] Pruebas de permisos, integridad y límites de archivo.
 
 Los sprints posteriores están detallados en `docs/analisis-y-plan-legaldesk.md`.
 
@@ -265,6 +281,7 @@ npm run db:seed
 npm run dev
 npm test
 npm run test:case-tracking
+npm run test:actions
 npm run test:cases
 npm run test:intake
 npm run test:requests
@@ -276,6 +293,8 @@ npm run build
 
 - Confirmación funcional de los campos básicos del expediente: asunto, descripción, radicado externo, despacho/entidad y fecha de apertura.
 - Confirmación funcional de las transiciones del expediente: `open -> in_progress/closed`, `in_progress -> on_hold/closed`, `on_hold -> in_progress/closed`, `closed -> in_progress/archived`; `archived` es terminal.
+- Confirmar si se permiten nuevas actuaciones en expedientes cerrados. Actualmente se permiten; solo los archivados bloquean cambios.
+- Confirmación funcional de los ocho tipos iniciales de actuación jurídica antes de permitir su administración.
 - Confirmar si los practicantes pueden ser responsables principales o únicamente apoyo supervisado.
 - Confirmación funcional de las siete áreas jurídicas y cuatro prioridades iniciales antes de permitir su edición.
 - Confirmación funcional de las transiciones iniciales de solicitudes: `received -> in_review/rejected`, `in_review -> approved/rejected`, `approved -> in_review`; `rejected` y `converted` son terminales.
@@ -293,3 +312,4 @@ npm run build
 - 5 de agosto de 2026: registro, clasificación, consulta e historial de estados de solicitudes implementados.
 - 5 de agosto de 2026: expedientes, conversión sin duplicados y pruebas integrales; cierre técnico del Sprint 2.
 - 5 de agosto de 2026: responsables, reasignaciones, estados e historiales de expediente; inicio del Sprint 3.
+- 5 de agosto de 2026: actuaciones jurídicas con línea de tiempo, permisos, auditoría y pruebas; cierre técnico del Sprint 3.

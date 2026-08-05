@@ -12,6 +12,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:cases": "npm run test:cases --workspace @legaldesk/api",
     "test:case-tracking": "npm run test:case-tracking --workspace @legaldesk/api",
+    "test:actions": "npm run test:actions --workspace @legaldesk/api",
     "test:intake": "npm run test:intake --workspace @legaldesk/api",
     "test:requests": "npm run test:requests --workspace @legaldesk/api",
     "test:roles": "npm run test:roles --workspace @legaldesk/api",

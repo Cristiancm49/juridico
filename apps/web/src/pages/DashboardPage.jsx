@@ -9,7 +9,7 @@ export function DashboardPage() {
     <section>
       <div className="page-heading">
         <div><span className="eyebrow">RESUMEN</span><h1>Buenos días, {firstName}</h1><p>Este es el punto de partida de LegalDesk.</p></div>
-        <div className="date-chip"><CalendarClock size={18} /> Fase 3 · Seguimiento</div>
+        <div className="date-chip"><CalendarClock size={18} /> Fase 4 · Documentos</div>
       </div>
 
       <div className="metric-grid">
@@ -25,19 +25,19 @@ export function DashboardPage() {
           {[
             ['Usuarios, autenticación, roles y permisos', 'Completado'],
             ['Personas, solicitudes y expedientes', 'Completado'],
-            ['Asignaciones, estados y actuaciones', 'Actual'],
-            ['Documentos, tareas y alertas', 'Pendiente'],
+            ['Asignaciones, estados y actuaciones', 'Completado'],
+            ['Documentos, tareas y alertas', 'Siguiente'],
           ].map(([label, status], index) => (
-            <div className={`roadmap-row ${index === 2 ? 'current' : ''}`} key={label}>
+            <div className={`roadmap-row ${index === 3 ? 'current' : ''}`} key={label}>
               <span className="roadmap-number">{index + 1}</span><strong>{label}</strong><span>{status}</span>
             </div>
           ))}
         </article>
         <article className="panel focus-panel">
           <span className="eyebrow light">OBJETIVO ACTUAL</span>
-          <h2>Responsables y estados con trazabilidad.</h2>
-          <p>Cada expediente conserva quién está a cargo y cómo avanza a través del flujo jurídico.</p>
-          <div className="focus-link">Sprint 3 en curso <ArrowUpRight size={18} /></div>
+          <h2>Documentos privados y trazables.</h2>
+          <p>El siguiente paso protegerá los archivos jurídicos, sus metadatos y el acceso autorizado.</p>
+          <div className="focus-link">Sprint 4 listo para iniciar <ArrowUpRight size={18} /></div>
         </article>
       </div>
     </section>

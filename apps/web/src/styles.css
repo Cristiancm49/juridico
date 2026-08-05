@@ -240,6 +240,33 @@ tbody tr:hover { background: #fbfcfb; }
 .case-history-grid .status-history { margin-top: 0; min-width: 0; }
 .assignment-dot { background: var(--green-700); }
 .tracking-empty { margin: 0; color: var(--muted); font-size: .7rem; }
+.actions-section { margin: 4px 0 18px; padding: 19px; border: 1px solid #d8e2de; border-radius: 14px; background: #fbfcfb; }
+.actions-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-bottom: 16px; }
+.actions-head h3 { display: flex; align-items: center; gap: 8px; margin: 4px 0 3px; font-family: 'Libre Franklin'; font-size: 1rem; }
+.actions-head h3 svg { color: var(--green-700); }
+.actions-head p { margin: 0; color: var(--muted); font-size: .7rem; }
+.actions-head .secondary-button { flex: 0 0 auto; }
+.action-editor { padding: 16px; margin-bottom: 17px; border: 1px solid #c9dad3; border-radius: 12px; background: #f2f7f4; }
+.action-editor-title { display: grid; gap: 3px; margin-bottom: 13px; }
+.action-editor-title strong { font-size: .8rem; }
+.action-editor-title span { color: var(--muted); font-size: .67rem; }
+.action-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.action-form-grid .full { grid-column: 1/-1; }
+.action-editor-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.action-timeline { display: grid; gap: 0; }
+.action-entry { position: relative; display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding-bottom: 18px; }
+.action-entry:not(:last-child)::before { content: ''; position: absolute; left: 15px; top: 31px; bottom: 0; width: 1px; background: #d9e2de; }
+.action-marker { position: relative; z-index: 1; width: 32px; height: 32px; display: grid; place-items: center; border: 4px solid #fbfcfb; border-radius: 50%; color: white; box-shadow: 0 0 0 1px #d7e0dc; }
+.action-body { min-width: 0; padding: 3px 0 0; }
+.action-title-row { display: flex; justify-content: space-between; gap: 12px; }
+.action-title-row h4 { margin: 2px 0 8px; font-size: .82rem; }
+.action-type { font-size: .62rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.action-body > p { margin: 0 0 9px; color: #52615d; font-size: .73rem; line-height: 1.55; white-space: pre-wrap; }
+.action-result { display: grid; gap: 3px; padding: 9px 11px; margin-bottom: 9px; border-left: 3px solid #7f9f93; border-radius: 0 8px 8px 0; background: #eef4f1; }
+.action-result strong { color: var(--green-800); font-size: .63rem; text-transform: uppercase; }
+.action-result span { color: #4c5d58; font-size: .7rem; white-space: pre-wrap; }
+.action-meta { display: flex; justify-content: space-between; gap: 12px; color: #82908b; font-size: .64rem; }
+.action-empty { padding: 15px; border-radius: 9px; background: #f2f5f3; text-align: center; }
 
 .modal-layer { position: fixed; inset: 0; z-index: 100; background: rgba(10,35,31,.55); backdrop-filter: blur(3px); display: grid; place-items: center; padding: 22px; }
 .modal-card { background: white; border-radius: 20px; padding: 27px; width: min(650px, 100%); max-height: 90vh; overflow-y: auto; box-shadow: 0 30px 70px rgba(10,35,31,.25); }
@@ -339,6 +366,7 @@ legend { font-size: .72rem; font-weight: 800; color: #52615d; margin-bottom: 10p
   .request-filters { grid-template-columns: 1fr; }
   .case-filters { grid-template-columns: 1fr; }
   .case-tracking-grid, .case-history-grid { grid-template-columns: 1fr; }
+  .actions-head { align-items: stretch; flex-direction: column; }
   .status-catalog { grid-template-columns: 1fr; }
   .filter-actions { justify-content: stretch; }
   .filter-actions .primary-button { flex: 1; }
@@ -346,7 +374,9 @@ legend { font-size: .72rem; font-weight: 800; color: #52615d; margin-bottom: 10p
 
 @media (max-width: 600px) {
   .login-card { padding: 30px 24px; }
-  .metric-grid, .form-grid, .role-options, .permission-groups { grid-template-columns: 1fr; }
+  .metric-grid, .form-grid, .role-options, .permission-groups, .action-form-grid { grid-template-columns: 1fr; }
+  .action-form-grid .full { grid-column: auto; }
+  .action-meta { align-items: flex-start; flex-direction: column; gap: 4px; }
   .table-toolbar { align-items: stretch; flex-direction: column; }
   .role-summary { grid-template-columns: 42px 1fr 20px; }
   .permission-count { display: none; }

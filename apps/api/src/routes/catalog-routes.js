@@ -53,4 +53,17 @@ export async function catalogRoutes(app) {
       return { caseStatuses: result.rows };
     },
   );
+
+  app.get(
+    '/action-types',
+    { preHandler: [authenticate, requirePermission('cases.read')] },
+    async () => {
+      const result = await query(
+        `SELECT id, code, name, description, color, active, sort_order AS "sortOrder"
+         FROM action_types
+         ORDER BY active DESC, sort_order, name`,
+      );
+      return { actionTypes: result.rows };
+    },
+  );
 }

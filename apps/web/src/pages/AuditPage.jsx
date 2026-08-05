@@ -21,6 +21,8 @@ const actionLabels = {
   'case.update': 'Expediente actualizado',
   'case.assignment_change': 'Responsable de expediente cambiado',
   'case.status_change': 'Estado de expediente cambiado',
+  'legal_action.create': 'Actuación jurídica registrada',
+  'legal_action.update': 'Actuación jurídica actualizada',
 };
 
 const emptyFilters = { search: '', action: '', from: '', to: '' };
