@@ -1,7 +1,7 @@
 # Contexto vivo de LegalDesk
 
 Última actualización: 5 de agosto de 2026  
-Estado: Sprints 1, 2 y 3 completados; Sprint 4 listo para iniciar
+Estado: Sprints 1, 2, 3 y 4 completados; Sprint 5 listo para iniciar
 
 > Leer este archivo antes de implementar una funcionalidad. Actualizarlo cuando cambien la arquitectura, la base de datos, los permisos, las rutas o el estado del backlog.
 
@@ -21,16 +21,18 @@ La primera versión prioriza simplicidad, trazabilidad y seguridad. No incluye p
 - Migraciones escritas como archivos `.sql` versionados.
 - Monolito modular en un solo repositorio; no microservicios.
 - Autenticación propia mediante sesiones opacas en cookies; no JWT en el navegador.
-- Archivos futuros en almacenamiento privado compatible con S3; PostgreSQL guardará solo metadatos.
+- Archivos en almacenamiento privado compatible con S3 mediante AWS SDK; MinIO se usa localmente y PostgreSQL guarda solo metadatos.
 
 ## 3. Topología local
 
 ```text
 React/Vite :5173  ->  API Fastify :3100  ->  PostgreSQL Docker :55432
+                                      ->  MinIO S3 privado :59000
 ```
 
 - URL de la aplicación: `http://127.0.0.1:5173`
 - Salud del API: `http://127.0.0.1:3100/api/health`
+- Consola local de MinIO: `http://127.0.0.1:59001`; no exponerla públicamente.
 - Las credenciales locales se leen desde `.env`; nunca documentar contraseñas reales aquí.
 
 ## 4. Estructura relevante
@@ -47,6 +49,7 @@ apps/
       audit.js           # escritura de bitácora
       db.js              # pool y transacciones
       security.js        # tokens y validaciones
+      storage.js         # acceso privado a objetos S3 compatibles
       server.js          # inicio del servicio
     test/                # pruebas con node:test
   web/
@@ -89,7 +92,7 @@ No editar `node_modules`, `apps/web/dist` ni `tmp`.
 
 ## 7. Base de datos actual
 
-Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql`, `004_legal_requests.sql`, `005_cases.sql`, `006_case_tracking.sql` y `007_legal_actions.sql`.
+Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql`, `004_legal_requests.sql`, `005_cases.sql`, `006_case_tracking.sql`, `007_legal_actions.sql` y `008_documents.sql`.
 
 Tablas:
 
@@ -112,6 +115,8 @@ Tablas:
 - `case_status_history`: transición, comentario, responsable y fecha de cada cambio de estado.
 - `action_types`: catálogo ordenado de tipos de actuación jurídica, color y estado.
 - `legal_actions`: línea de tiempo del expediente con tipo, fecha efectiva, descripción, resultado y autor.
+- `document_categories`: catálogo ordenado de ocho clases de documento jurídico.
+- `documents`: metadatos, ubicación privada, hash SHA-256, grupo lógico, versión, vigencia, categoría y autor de carga.
 - `schema_migrations`: migraciones ya aplicadas.
 
 Toda nueva tabla o columna requiere una nueva migración numerada. No modificar una migración aplicada.
@@ -200,6 +205,10 @@ Matriz inicial validada técnicamente:
 | `GET /api/v1/cases/:caseId/actions` | `cases.read` | Consultar actuaciones por expediente, tipo y página |
 | `POST /api/v1/cases/:caseId/actions` | `actions.write` | Registrar una actuación en un expediente no archivado |
 | `PATCH /api/v1/cases/:caseId/actions/:actionId` | `actions.write` | Editar una actuación en un expediente no archivado |
+| `GET /api/v1/catalogs/document-categories` | `documents.read` | Consultar categorías documentales |
+| `GET /api/v1/cases/:caseId/documents` | `documents.read` | Consultar documentos y versiones del expediente |
+| `POST /api/v1/cases/:caseId/documents` | `documents.write` | Cargar un documento o una nueva versión validada |
+| `GET /api/v1/cases/:caseId/documents/:documentId/download` | `documents.read` | Descargar por la API después de comprobar autorización |
 
 ## 11. Pantallas implementadas
 
@@ -217,6 +226,7 @@ Matriz inicial validada técnicamente:
 - Conversión: acción disponible en solicitudes aprobadas para usuarios con `cases.write`.
 - Seguimiento de expedientes: responsable actual, reasignación, filtros e historiales de asignación y estado.
 - Actuaciones jurídicas: registro y edición, tipo, fecha efectiva, resultado opcional y línea de tiempo adaptable en la ficha del expediente.
+- Gestión documental en expedientes: carga privada, categorías, historial de versiones, hash, metadatos y descarga autorizada.
 
 ## 12. Estado del backlog
 
@@ -251,12 +261,21 @@ Matriz inicial validada técnicamente:
 
 ### Sprint 4 - documentos
 
-- [ ] Integración con almacenamiento privado compatible con S3.
-- [ ] Carga segura con validación de tipo, tamaño, nombre y hash.
-- [ ] Metadatos y relación del documento con el expediente.
-- [ ] Descarga autorizada sin exponer públicamente el archivo.
-- [ ] Versionado lógico y clasificación de documentos internos.
-- [ ] Pruebas de permisos, integridad y límites de archivo.
+- [x] Integración con almacenamiento privado compatible con S3.
+- [x] Carga segura con validación de tipo, tamaño, nombre y hash.
+- [x] Metadatos y relación del documento con el expediente.
+- [x] Descarga autorizada sin exponer públicamente el archivo.
+- [x] Versionado lógico y clasificación de documentos internos.
+- [x] Pruebas de permisos, integridad y límites de archivo.
+
+### Sprint 5 - tareas, vencimientos y alertas
+
+- [ ] Tareas y compromisos asociados al expediente.
+- [ ] Fechas límite, responsable, prioridad y estado de la tarea.
+- [ ] Alertas internas idempotentes a 7, 3 y 1 día, el día límite y al vencer.
+- [ ] Centro de notificaciones con pendientes y leídas.
+- [ ] Vistas de próximos vencimientos y vencidos.
+- [ ] Pruebas de generación única, permisos y cambios de estado.
 
 Los sprints posteriores están detallados en `docs/analisis-y-plan-legaldesk.md`.
 
@@ -275,13 +294,14 @@ Los sprints posteriores están detallados en `docs/analisis-y-plan-legaldesk.md`
 ## 14. Comandos habituales
 
 ```bash
-docker compose up -d postgres
+docker compose up -d
 npm run db:migrate
 npm run db:seed
 npm run dev
 npm test
 npm run test:case-tracking
 npm run test:actions
+npm run test:documents
 npm run test:cases
 npm run test:intake
 npm run test:requests
@@ -295,6 +315,7 @@ npm run build
 - Confirmación funcional de las transiciones del expediente: `open -> in_progress/closed`, `in_progress -> on_hold/closed`, `on_hold -> in_progress/closed`, `closed -> in_progress/archived`; `archived` es terminal.
 - Confirmar si se permiten nuevas actuaciones en expedientes cerrados. Actualmente se permiten; solo los archivados bloquean cambios.
 - Confirmación funcional de los ocho tipos iniciales de actuación jurídica antes de permitir su administración.
+- Confirmación funcional de los cinco formatos, límite inicial de 20 MB y ocho categorías documentales.
 - Confirmar si los practicantes pueden ser responsables principales o únicamente apoyo supervisado.
 - Confirmación funcional de las siete áreas jurídicas y cuatro prioridades iniciales antes de permitir su edición.
 - Confirmación funcional de las transiciones iniciales de solicitudes: `received -> in_review/rejected`, `in_review -> approved/rejected`, `approved -> in_review`; `rejected` y `converted` son terminales.
@@ -313,3 +334,4 @@ npm run build
 - 5 de agosto de 2026: expedientes, conversión sin duplicados y pruebas integrales; cierre técnico del Sprint 2.
 - 5 de agosto de 2026: responsables, reasignaciones, estados e historiales de expediente; inicio del Sprint 3.
 - 5 de agosto de 2026: actuaciones jurídicas con línea de tiempo, permisos, auditoría y pruebas; cierre técnico del Sprint 3.
+- 5 de agosto de 2026: documentos privados en MinIO, metadatos, hash, versiones y descargas autorizadas; cierre técnico del Sprint 4.

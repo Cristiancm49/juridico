@@ -23,6 +23,8 @@ const actionLabels = {
   'case.status_change': 'Estado de expediente cambiado',
   'legal_action.create': 'Actuación jurídica registrada',
   'legal_action.update': 'Actuación jurídica actualizada',
+  'document.upload': 'Documento cargado',
+  'document.download': 'Documento descargado',
 };
 
 const emptyFilters = { search: '', action: '', from: '', to: '' };

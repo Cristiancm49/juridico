@@ -1,7 +1,7 @@
-import { Activity, BriefcaseBusiness, Edit3, Eye, Plus, RefreshCw, Search, UserRoundCheck, Workflow, X } from 'lucide-react';
+import { Activity, BriefcaseBusiness, Download, Edit3, Eye, FileText, History, Plus, RefreshCw, Search, ShieldCheck, UploadCloud, UserRoundCheck, Workflow, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { apiFetch } from '../api.js';
+import { apiDownload, apiFetch } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 
 function emptyForm() {
@@ -33,6 +33,16 @@ function emptyActionForm(actionTypeId = '') {
   };
 }
 
+function emptyDocumentForm(categoryId = '', replacesDocumentId = '') {
+  return { categoryId, description: '', replacesDocumentId, file: null };
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 const statusTransitions = {
   open: ['in_progress', 'closed'],
   in_progress: ['on_hold', 'closed'],
@@ -50,6 +60,7 @@ export function CasesPage() {
   const [statuses, setStatuses] = useState([]);
   const [assignees, setAssignees] = useState([]);
   const [actionTypes, setActionTypes] = useState([]);
+  const [documentCategories, setDocumentCategories] = useState([]);
   const [filters, setFilters] = useState({ search: '', legalAreaId: '', priorityId: '', status: '', assignee: '' });
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0 });
@@ -66,6 +77,12 @@ export function CasesPage() {
   const [actionEditing, setActionEditing] = useState(null);
   const [actionForm, setActionForm] = useState(emptyActionForm());
   const [actionSaving, setActionSaving] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [documentMaxBytes, setDocumentMaxBytes] = useState(20 * 1024 * 1024);
+  const [documentEditing, setDocumentEditing] = useState(null);
+  const [documentForm, setDocumentForm] = useState(emptyDocumentForm());
+  const [documentSaving, setDocumentSaving] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const loadCases = useCallback(async (page = 1, activeFilters = appliedFilters) => {
     setLoading(true);
@@ -97,14 +114,16 @@ export function CasesPage() {
       apiFetch('/api/v1/catalogs/case-statuses'),
       apiFetch('/api/v1/cases/assignees'),
       apiFetch('/api/v1/catalogs/action-types'),
+      can('documents.read') ? apiFetch('/api/v1/catalogs/document-categories') : Promise.resolve({ documentCategories: [] }),
     ])
-      .then(([peopleData, areaData, priorityData, statusData, assigneeData, actionTypeData]) => {
+      .then(([peopleData, areaData, priorityData, statusData, assigneeData, actionTypeData, documentCategoryData]) => {
         setPeople(peopleData.people);
         setAreas(areaData.legalAreas);
         setPriorities(priorityData.priorities);
         setStatuses(statusData.caseStatuses);
         setAssignees(assigneeData.assignees);
         setActionTypes(actionTypeData.actionTypes.filter(({ active }) => active));
+        setDocumentCategories(documentCategoryData.documentCategories.filter(({ active }) => active));
       })
       .catch((error) => toast.error(error.message));
   }, []);
@@ -120,6 +139,8 @@ export function CasesPage() {
     setEditing({ mode: 'create' });
     setActions([]);
     setActionEditing(null);
+    setDocuments([]);
+    setDocumentEditing(null);
     setForm({
       ...emptyForm(),
       personId: activePeople[0].id,
@@ -130,9 +151,12 @@ export function CasesPage() {
 
   async function openEdit(item) {
     try {
-      const [data, actionData] = await Promise.all([
+      const [data, actionData, documentData] = await Promise.all([
         apiFetch(`/api/v1/cases/${item.id}`),
         apiFetch(`/api/v1/cases/${item.id}/actions?limit=50`),
+        can('documents.read')
+          ? apiFetch(`/api/v1/cases/${item.id}/documents`)
+          : Promise.resolve({ documents: [], maxBytes: 20 * 1024 * 1024 }),
       ]);
       const detail = data.case;
       setEditing({ mode: 'edit', case: detail });
@@ -140,6 +164,9 @@ export function CasesPage() {
       setStatusHistory(data.statusHistory);
       setActions(actionData.actions);
       setActionEditing(null);
+      setDocuments(documentData.documents);
+      setDocumentMaxBytes(documentData.maxBytes);
+      setDocumentEditing(null);
       setAssignmentForm({ userId: detail.assignee?.id || assignees[0]?.id || '', comment: '' });
       setStatusForm({ statusCode: detail.status.code, comment: '' });
       setForm({
@@ -233,6 +260,75 @@ export function CasesPage() {
       toast.error(error.message);
     } finally {
       setActionSaving(false);
+    }
+  }
+
+  async function loadDocuments(caseId) {
+    const data = await apiFetch(`/api/v1/cases/${caseId}/documents`);
+    setDocuments(data.documents);
+    setDocumentMaxBytes(data.maxBytes);
+  }
+
+  function startNewDocument() {
+    const firstCategory = documentCategories[0];
+    if (!firstCategory) {
+      toast.error('No hay categorías documentales activas.');
+      return;
+    }
+    setDocumentEditing({ mode: 'create', key: Date.now() });
+    setDocumentForm(emptyDocumentForm(firstCategory.id));
+  }
+
+  function startDocumentVersion(document) {
+    setDocumentEditing({ mode: 'version', document, key: Date.now() });
+    setDocumentForm({
+      ...emptyDocumentForm(document.category.id, document.id),
+      description: document.description || '',
+    });
+  }
+
+  async function saveDocument() {
+    if (!documentForm.categoryId || !documentForm.file) {
+      toast.error('Selecciona la categoría y el archivo.');
+      return;
+    }
+    if (documentForm.file.size > documentMaxBytes) {
+      toast.error(`El archivo supera el máximo de ${formatBytes(documentMaxBytes)}.`);
+      return;
+    }
+    setDocumentSaving(true);
+    try {
+      const payload = new FormData();
+      payload.append('categoryId', documentForm.categoryId);
+      if (documentForm.description.trim()) payload.append('description', documentForm.description.trim());
+      if (documentForm.replacesDocumentId) payload.append('replacesDocumentId', documentForm.replacesDocumentId);
+      payload.append('file', documentForm.file);
+      await apiFetch(`/api/v1/cases/${editing.case.id}/documents`, { method: 'POST', body: payload });
+      toast.success(documentEditing.mode === 'version' ? 'Nueva versión cargada correctamente.' : 'Documento cargado correctamente.');
+      setDocumentEditing(null);
+      await loadDocuments(editing.case.id);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setDocumentSaving(false);
+    }
+  }
+
+  async function downloadDocument(document) {
+    setDownloadingId(document.id);
+    try {
+      const { blob, filename } = await apiDownload(`/api/v1/cases/${editing.case.id}/documents/${document.id}/download`);
+      const url = URL.createObjectURL(blob);
+      const anchor = window.document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success('Descarga preparada correctamente.');
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setDownloadingId(null);
     }
   }
 
@@ -388,6 +484,43 @@ export function CasesPage() {
                     </article>
                   ))}
                   {!actions.length && <p className="tracking-empty action-empty">Aún no se han registrado actuaciones en este expediente.</p>}
+                </div>
+              </section>
+            )}
+            {editing.mode === 'edit' && can('documents.read') && (
+              <section className="documents-section">
+                <div className="documents-head">
+                  <div className="documents-heading-copy"><span className="document-shield"><ShieldCheck size={19} /></span><div><span className="eyebrow">ARCHIVO PRIVADO</span><h3>Documentos del expediente</h3><p>Acceso autorizado, verificación de integridad y versiones sin eliminar antecedentes.</p></div></div>
+                  {can('documents.write') && editing.case.status.code !== 'archived' && !documentEditing && <button type="button" className="secondary-button" onClick={startNewDocument}><UploadCloud size={16} /> Cargar documento</button>}
+                </div>
+                {documentEditing && (
+                  <div className="document-editor">
+                    <div className="action-editor-title"><strong>{documentEditing.mode === 'version' ? `Nueva versión de ${documentEditing.document.originalName}` : 'Cargar documento privado'}</strong><span>Formatos permitidos: PDF, DOCX, XLSX, JPG y PNG. Máximo {formatBytes(documentMaxBytes)}.</span></div>
+                    <div className="document-form-grid">
+                      <label>Categoría<select value={documentForm.categoryId} onChange={(event) => setDocumentForm({ ...documentForm, categoryId: event.target.value })}>{documentCategories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>
+                      <label>Archivo<input key={documentEditing.key} type="file" accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png" onChange={(event) => setDocumentForm({ ...documentForm, file: event.target.files[0] || null })} /></label>
+                      <label className="full">Descripción <small className="optional-label">Opcional</small><textarea value={documentForm.description} onChange={(event) => setDocumentForm({ ...documentForm, description: event.target.value })} maxLength="1000" rows="2" /></label>
+                    </div>
+                    <div className="action-editor-buttons"><button type="button" className="secondary-button" onClick={() => setDocumentEditing(null)} disabled={documentSaving}>Cancelar</button><button type="button" className="primary-button" onClick={saveDocument} disabled={documentSaving}>{documentSaving ? 'Cargando…' : 'Guardar documento'}</button></div>
+                  </div>
+                )}
+                <div className="document-list">
+                  {documents.map((document) => (
+                    <article className={`document-card ${document.isCurrent ? '' : 'historical'}`} key={document.id}>
+                      <div className="document-icon"><FileText size={20} /></div>
+                      <div className="document-copy">
+                        <div className="document-title-row"><strong>{document.originalName}</strong><span className={document.isCurrent ? 'current-version' : 'old-version'}>{document.isCurrent ? 'Vigente' : 'Anterior'} · v{document.versionNumber}</span></div>
+                        <span>{document.category.name} · {formatBytes(document.sizeBytes)} · {document.uploader?.fullName || 'Usuario eliminado'}</span>
+                        {document.description && <p>{document.description}</p>}
+                        <small>SHA-256 {document.sha256.slice(0, 12)}… · {new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(document.createdAt))}</small>
+                      </div>
+                      <div className="document-buttons">
+                        <button type="button" className="icon-button" onClick={() => downloadDocument(document)} disabled={downloadingId === document.id} aria-label={`Descargar ${document.originalName}`} title="Descargar"><Download size={17} /></button>
+                        {document.isCurrent && can('documents.write') && editing.case.status.code !== 'archived' && !documentEditing && <button type="button" className="icon-button" onClick={() => startDocumentVersion(document)} aria-label={`Cargar nueva versión de ${document.originalName}`} title="Nueva versión"><History size={17} /></button>}
+                      </div>
+                    </article>
+                  ))}
+                  {!documents.length && <div className="document-empty"><FileText size={24} /><div><strong>Sin documentos</strong><span>Este expediente todavía no tiene archivos asociados.</span></div></div>}
                 </div>
               </section>
             )}

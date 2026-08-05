@@ -19,6 +19,15 @@ export const config = {
     'postgresql://legaldesk:legaldesk@127.0.0.1:55432/legaldesk',
   sessionHours: numberFromEnv(process.env.SESSION_HOURS, 12),
   cookieSecure: process.env.COOKIE_SECURE === 'true',
+  documentMaxBytes: numberFromEnv(process.env.DOCUMENT_MAX_BYTES, 20 * 1024 * 1024),
+  s3: {
+    endpoint: process.env.S3_ENDPOINT || 'http://127.0.0.1:59000',
+    region: process.env.S3_REGION || 'us-east-1',
+    bucket: process.env.S3_BUCKET || 'legaldesk-documents',
+    accessKeyId: process.env.S3_ACCESS_KEY || 'legaldesk',
+    secretAccessKey: process.env.S3_SECRET_KEY || 'legaldesk-local-secret',
+    forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== 'false',
+  },
 };
 
 export const SESSION_COOKIE = 'legaldesk_session';

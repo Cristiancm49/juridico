@@ -1,4 +1,4 @@
-import { Bell, BookUser, BriefcaseBusiness, ClipboardList, FileText, KeyRound, LayoutDashboard, ListTree, LogOut, Menu, ScrollText, ShieldCheck, Users, X } from 'lucide-react';
+import { Bell, BookUser, BriefcaseBusiness, ClipboardList, KeyRound, LayoutDashboard, ListTree, LogOut, Menu, ScrollText, ShieldCheck, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -63,7 +63,7 @@ export function AppLayout({ children, pathname }) {
             </a>
           ))}
           <div className="nav-divider">Próximamente</div>
-          <span className="nav-disabled"><FileText size={19} /> Documentos</span>
+          <span className="nav-disabled"><Bell size={19} /> Tareas y alertas</span>
         </nav>
 
         <div className="sidebar-user">

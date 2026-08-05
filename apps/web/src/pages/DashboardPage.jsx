@@ -9,7 +9,7 @@ export function DashboardPage() {
     <section>
       <div className="page-heading">
         <div><span className="eyebrow">RESUMEN</span><h1>Buenos días, {firstName}</h1><p>Este es el punto de partida de LegalDesk.</p></div>
-        <div className="date-chip"><CalendarClock size={18} /> Fase 4 · Documentos</div>
+        <div className="date-chip"><CalendarClock size={18} /> Fase 5 · Tareas y alertas</div>
       </div>
 
       <div className="metric-grid">
@@ -26,18 +26,19 @@ export function DashboardPage() {
             ['Usuarios, autenticación, roles y permisos', 'Completado'],
             ['Personas, solicitudes y expedientes', 'Completado'],
             ['Asignaciones, estados y actuaciones', 'Completado'],
-            ['Documentos, tareas y alertas', 'Siguiente'],
+            ['Documentos privados y versiones', 'Completado'],
+            ['Tareas, vencimientos y alertas', 'Siguiente'],
           ].map(([label, status], index) => (
-            <div className={`roadmap-row ${index === 3 ? 'current' : ''}`} key={label}>
+            <div className={`roadmap-row ${index === 4 ? 'current' : ''}`} key={label}>
               <span className="roadmap-number">{index + 1}</span><strong>{label}</strong><span>{status}</span>
             </div>
           ))}
         </article>
         <article className="panel focus-panel">
           <span className="eyebrow light">OBJETIVO ACTUAL</span>
-          <h2>Documentos privados y trazables.</h2>
-          <p>El siguiente paso protegerá los archivos jurídicos, sus metadatos y el acceso autorizado.</p>
-          <div className="focus-link">Sprint 4 listo para iniciar <ArrowUpRight size={18} /></div>
+          <h2>Vencimientos claros y alertas útiles.</h2>
+          <p>El siguiente paso organizará compromisos, fechas críticas y avisos internos sin duplicados.</p>
+          <div className="focus-link">Sprint 5 listo para iniciar <ArrowUpRight size={18} /></div>
         </article>
       </div>
     </section>

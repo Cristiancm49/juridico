@@ -66,4 +66,17 @@ export async function catalogRoutes(app) {
       return { actionTypes: result.rows };
     },
   );
+
+  app.get(
+    '/document-categories',
+    { preHandler: [authenticate, requirePermission('documents.read')] },
+    async () => {
+      const result = await query(
+        `SELECT id, code, name, description, active, sort_order AS "sortOrder"
+         FROM document_categories
+         ORDER BY active DESC, sort_order, name`,
+      );
+      return { documentCategories: result.rows };
+    },
+  );
 }
