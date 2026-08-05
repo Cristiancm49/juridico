@@ -1,7 +1,7 @@
 # Contexto vivo de LegalDesk
 
 Última actualización: 5 de agosto de 2026  
-Estado: Sprints 1, 2, 3, 4 y 5 completados; Sprint 6 listo para iniciar
+Estado: Sprints 1, 2, 3, 4, 5 y 6 completados; Sprint 7 listo para iniciar
 
 > Leer este archivo antes de implementar una funcionalidad. Actualizarlo cuando cambien la arquitectura, la base de datos, los permisos, las rutas o el estado del backlog.
 
@@ -96,7 +96,9 @@ No editar `node_modules`, `apps/web/dist` ni `tmp`.
 
 ## 7. Base de datos actual
 
-Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql`, `004_legal_requests.sql`, `005_cases.sql`, `006_case_tracking.sql`, `007_legal_actions.sql`, `008_documents.sql` y `009_tasks_notifications.sql`.
+Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql`, `003_intake_foundation.sql`, `004_legal_requests.sql`, `005_cases.sql`, `006_case_tracking.sql`, `007_legal_actions.sql`, `008_documents.sql`, `009_tasks_notifications.sql` y `010_report_indexes.sql`.
+
+La migración `010` añade índices compuestos para los filtros de reportes sobre fecha, estado, área y responsable. El módulo de reportes no requiere tablas nuevas: calcula indicadores directamente desde la información operativa.
 
 Tablas:
 
@@ -227,6 +229,9 @@ Matriz inicial validada técnicamente:
 | `GET /api/v1/notifications` | `tasks.read` | Consultar las alertas propias y el total sin leer |
 | `PATCH /api/v1/notifications/:id/read` | `tasks.read` | Marcar una alerta propia como leída |
 | `POST /api/v1/notifications/read-all` | `tasks.read` | Marcar todas las alertas propias como leídas |
+| `GET /api/v1/reports/options` | `reports.read` | Consultar áreas, estados y responsables disponibles para filtros |
+| `GET /api/v1/reports/overview` | `reports.read` | Obtener indicadores y distribuciones por periodo, área, estado y responsable |
+| `GET /api/v1/reports/cases.csv` | `reports.read` | Exportar el detalle filtrado y registrar la acción en auditoría |
 
 ## 11. Pantallas implementadas
 
@@ -247,7 +252,10 @@ Matriz inicial validada técnicamente:
 - Gestión documental en expedientes: carga privada, categorías, historial de versiones, hash, metadatos y descarga autorizada.
 - Tareas y vencimientos: resumen, filtros, creación, edición, responsables, estados e historial.
 - Centro de notificaciones: campana con contador, alertas persistentes, lectura individual y lectura total.
-- Tablero: indicadores reales de tareas activas, vencidas, para hoy y para los próximos siete días.
+- Reportes: indicadores, filtros por periodo, área, estado y responsable, distribuciones visuales y carga del equipo.
+- Exportación de expedientes a CSV con permiso, auditoría y neutralización de fórmulas.
+- Tablero: indicadores jurídicos globales para quienes tienen `reports.read`; agenda personal para los demás usuarios.
+- Accesibilidad transversal: foco visible, cierre de menús emergentes con Escape y respeto por movimiento reducido.
 
 ## 12. Estado del backlog
 
@@ -300,12 +308,24 @@ Matriz inicial validada técnicamente:
 
 ### Sprint 6 - reportes y experiencia
 
-- [ ] Tablero con indicadores jurídicos y operativos acordados.
-- [ ] Reportes filtrables por estado, área, responsable y periodo.
-- [ ] Exportación CSV segura.
-- [ ] Revisión transversal de estados vacíos, carga, errores y navegación por teclado.
-- [ ] Pruebas de rendimiento de las consultas críticas.
-- [ ] Evidencia de respuesta menor de tres segundos con el volumen acordado.
+- [x] Tablero con indicadores jurídicos y operativos acordados.
+- [x] Reportes filtrables por estado, área, responsable y periodo.
+- [x] Exportación CSV segura.
+- [x] Revisión transversal de estados vacíos, carga, errores y navegación por teclado.
+- [x] Pruebas de rendimiento de las consultas críticas.
+- [x] Evidencia de respuesta menor de tres segundos con 1.000 expedientes y 2.000 tareas.
+
+Medición local de cierre del sprint: resumen `36 ms` y exportación CSV `28 ms`. El script crea el volumen temporal, mide ambos endpoints con el permiso real y elimina los datos al finalizar. Los tiempos varían según el equipo, por lo que el criterio automático conservado es `< 3.000 ms` por operación.
+
+### Sprint 7 - estabilización y entrega
+
+- [ ] Pruebas integrales y criterios de aceptación RF-01 a RF-16.
+- [ ] Revisión de seguridad y corrección de hallazgos críticos.
+- [ ] Procedimiento comprobado de respaldo y restauración de PostgreSQL y MinIO.
+- [ ] Configuración documentada para ambiente de pruebas y producción, sin desplegar hasta recibir autorización.
+- [ ] Monitoreo, logs y procedimiento de reversión.
+- [ ] Manual técnico, manual de usuario y guía de operación.
+- [ ] Lista de aceptación y cierre.
 
 Los sprints posteriores están detallados en `docs/analisis-y-plan-legaldesk.md`.
 
@@ -333,6 +353,8 @@ npm run test:case-tracking
 npm run test:actions
 npm run test:documents
 npm run test:tasks
+npm run test:reports
+npm run test:performance
 npm run test:cases
 npm run test:intake
 npm run test:requests
@@ -355,6 +377,7 @@ npm run worker
 - Política definitiva de conservación de datos y documentos.
 - Proveedor de PostgreSQL y almacenamiento S3 para producción.
 - Matriz de permisos validada por KAFA y Asociados.
+- Confirmación funcional de los indicadores y columnas del CSV antes de congelar el formato para usuarios finales.
 
 ## 16. Registro breve de cambios
 
@@ -369,3 +392,4 @@ npm run worker
 - 5 de agosto de 2026: actuaciones jurídicas con línea de tiempo, permisos, auditoría y pruebas; cierre técnico del Sprint 3.
 - 5 de agosto de 2026: documentos privados en MinIO, metadatos, hash, versiones y descargas autorizadas; cierre técnico del Sprint 4.
 - 5 de agosto de 2026: tareas, vencimientos, trabajador `pg-boss`, alertas idempotentes y centro de notificaciones; cierre técnico del Sprint 5.
+- 5 de agosto de 2026: reportes filtrables, tablero jurídico, CSV auditado y prueba de rendimiento con 1.000 expedientes y 2.000 tareas; cierre técnico del Sprint 6.

@@ -14,6 +14,8 @@
     "test:actions": "node scripts/validate-actions.js",
     "test:documents": "node scripts/validate-documents.js",
     "test:tasks": "node scripts/validate-tasks.js",
+    "test:reports": "node scripts/validate-reports.js",
+    "test:performance": "node scripts/validate-report-performance.js",
     "test:intake": "node scripts/validate-intake.js",
     "test:requests": "node scripts/validate-requests.js",
     "test:roles": "node scripts/validate-roles.js",

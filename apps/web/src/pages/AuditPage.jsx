@@ -28,6 +28,7 @@ const actionLabels = {
   'task.create': 'Tarea creada',
   'task.update': 'Tarea actualizada',
   'task.status_change': 'Estado de tarea cambiado',
+  'report.export': 'Reporte exportado',
 };
 
 const emptyFilters = { search: '', action: '', from: '', to: '' };

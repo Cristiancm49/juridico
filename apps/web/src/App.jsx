@@ -9,6 +9,7 @@ import { LoginPage } from './pages/LoginPage.jsx';
 import { PeoplePage } from './pages/PeoplePage.jsx';
 import { RolesPage } from './pages/RolesPage.jsx';
 import { RequestsPage } from './pages/RequestsPage.jsx';
+import { ReportsPage } from './pages/ReportsPage.jsx';
 import { TasksPage } from './pages/TasksPage.jsx';
 import { UsersPage } from './pages/UsersPage.jsx';
 import { navigate, usePathname } from './router.js';
@@ -32,6 +33,7 @@ export function App() {
     '/solicitudes': 'requests.read',
     '/expedientes': 'cases.read',
     '/tareas': 'tasks.read',
+    '/reportes': 'reports.read',
     '/usuarios': 'users.read',
     '/roles': 'roles.manage',
     '/auditoria': 'audit.read',
@@ -56,6 +58,7 @@ export function App() {
     '/solicitudes': <RequestsPage />,
     '/expedientes': <CasesPage />,
     '/tareas': <TasksPage />,
+    '/reportes': <ReportsPage />,
     '/usuarios': <UsersPage />,
     '/roles': <RolesPage />,
     '/auditoria': <AuditPage />,

@@ -20,6 +20,17 @@ export function AppLayout({ children, pathname }) {
   }, [user.mustChangePassword]);
 
   useEffect(() => {
+    function closeOverlays(event) {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      setNotificationOpen(false);
+      if (!user.mustChangePassword) setPasswordOpen(false);
+    }
+    window.addEventListener('keydown', closeOverlays);
+    return () => window.removeEventListener('keydown', closeOverlays);
+  }, [user.mustChangePassword]);
+
+  useEffect(() => {
     if (!canReadTasks) return undefined;
     let active = true;
     async function load() {
@@ -79,6 +90,7 @@ export function AppLayout({ children, pathname }) {
     { to: '/solicitudes', label: 'Solicitudes', icon: ClipboardList, show: can('requests.read') },
     { to: '/expedientes', label: 'Expedientes', icon: BriefcaseBusiness, show: can('cases.read') },
     { to: '/tareas', label: 'Tareas y vencimientos', icon: ListTodo, show: can('tasks.read') },
+    { to: '/reportes', label: 'Reportes', icon: BarChart3, show: can('reports.read') },
     { to: '/catalogos', label: 'Catálogos', icon: ListTree, show: can('requests.read') },
     { to: '/usuarios', label: 'Usuarios', icon: Users, show: can('users.read') },
     { to: '/roles', label: 'Roles y permisos', icon: ShieldCheck, show: can('roles.manage') },
@@ -113,8 +125,6 @@ export function AppLayout({ children, pathname }) {
               <Icon size={19} /> <span>{label}</span>
             </a>
           ))}
-          <div className="nav-divider">Próximamente</div>
-          <span className="nav-disabled"><BarChart3 size={19} /> Reportes</span>
         </nav>
 
         <div className="sidebar-user">
