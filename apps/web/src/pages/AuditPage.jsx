@@ -11,6 +11,8 @@ const actionLabels = {
   'user.update': 'Usuario actualizado',
   'user.password_reset': 'Contraseña restablecida',
   'role.update': 'Rol actualizado',
+  'person.create': 'Persona registrada',
+  'person.update': 'Persona actualizada',
 };
 
 const emptyFilters = { search: '', action: '', from: '', to: '' };
@@ -137,4 +139,3 @@ export function AuditPage() {
     </section>
   );
 }
-

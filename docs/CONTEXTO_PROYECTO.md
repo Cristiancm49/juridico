@@ -1,7 +1,7 @@
 # Contexto vivo de LegalDesk
 
 Última actualización: 5 de agosto de 2026  
-Estado: Sprint 1 completado; Sprint 2 listo para iniciar
+Estado: Sprint 1 completado; Sprint 2 en curso
 
 > Leer este archivo antes de implementar una funcionalidad. Actualizarlo cuando cambien la arquitectura, la base de datos, los permisos, las rutas o el estado del backlog.
 
@@ -89,7 +89,7 @@ No editar `node_modules`, `apps/web/dist` ni `tmp`.
 
 ## 7. Base de datos actual
 
-Migraciones aplicadas: `001_security.sql` y `002_password_policy.sql`.
+Migraciones aplicadas: `001_security.sql`, `002_password_policy.sql` y `003_intake_foundation.sql`.
 
 Tablas:
 
@@ -100,6 +100,9 @@ Tablas:
 - `role_permissions`: relación de roles y permisos.
 - `sessions`: hash del token, vencimiento y datos del acceso.
 - `audit_logs`: usuario, acción, entidad, detalles, IP, navegador y fecha.
+- `people`: personas naturales o jurídicas, documento único, contacto, ubicación, notas y estado.
+- `legal_areas`: catálogo inicial de áreas jurídicas, orden y estado.
+- `priorities`: cuatro niveles de prioridad con orden, color y estado.
 - `schema_migrations`: migraciones ya aplicadas.
 
 Toda nueva tabla o columna requiere una nueva migración numerada. No modificar una migración aplicada.
@@ -164,6 +167,12 @@ Matriz inicial validada técnicamente:
 | `GET /api/v1/roles/permissions` | `roles.manage` | Consultar permisos disponibles |
 | `PATCH /api/v1/roles/:id` | `roles.manage` | Editar rol y permisos |
 | `GET /api/v1/audit` | `audit.read` | Consultar bitácora con acción, texto, fechas y paginación |
+| `GET /api/v1/people` | `requests.read` | Buscar y paginar personas por texto y estado |
+| `GET /api/v1/people/:id` | `requests.read` | Consultar la ficha de una persona |
+| `POST /api/v1/people` | `requests.write` | Registrar persona natural o jurídica |
+| `PATCH /api/v1/people/:id` | `requests.write` | Editar, activar o desactivar una persona |
+| `GET /api/v1/catalogs/legal-areas` | `requests.read` | Consultar áreas jurídicas |
+| `GET /api/v1/catalogs/priorities` | `requests.read` | Consultar prioridades |
 
 ## 11. Pantallas implementadas
 
@@ -174,6 +183,8 @@ Matriz inicial validada técnicamente:
 - Cambio personal de contraseña.
 - Cambio obligatorio de contraseña temporal.
 - Auditoría: búsqueda, acción, rango de fechas y paginación.
+- Personas y clientes: búsqueda, filtro por estado, registro, edición y activación/desactivación.
+- Áreas y prioridades: consulta adaptable de los catálogos iniciales.
 
 ## 12. Estado del backlog
 
@@ -191,8 +202,8 @@ Matriz inicial validada técnicamente:
 
 ### Sprint 2 - siguiente
 
-- [ ] Personas/clientes.
-- [ ] Áreas jurídicas y prioridades.
+- [x] Personas/clientes.
+- [x] Áreas jurídicas y prioridades (consulta; catálogo inicial controlado).
 - [ ] Solicitudes de asesoría.
 - [ ] Estados de solicitud.
 - [ ] Conversión de solicitud a expediente.
@@ -220,13 +231,15 @@ npm run db:migrate
 npm run db:seed
 npm run dev
 npm test
+npm run test:intake
 npm run test:roles
 npm run build
 ```
 
 ## 15. Decisiones todavía abiertas
 
-- Campos definitivos de personas, solicitudes y expedientes.
+- Campos definitivos de solicitudes y expedientes.
+- Confirmación funcional de las siete áreas jurídicas y cuatro prioridades iniciales antes de permitir su edición.
 - Estados y transiciones jurídicas permitidas.
 - Política definitiva de conservación de datos y documentos.
 - Proveedor de PostgreSQL y almacenamiento S3 para producción.
@@ -238,3 +251,4 @@ npm run build
 - 4 de agosto de 2026: edición de usuarios y cambio personal de contraseña.
 - 4 de agosto de 2026: contexto vivo, contraseña temporal obligatoria y consulta de auditoría.
 - 5 de agosto de 2026: matriz de los cuatro roles validada contra PostgreSQL y rutas protegidas; cierre técnico del Sprint 1.
+- 5 de agosto de 2026: personas/clientes, áreas jurídicas y prioridades implementadas; inicio del Sprint 2.

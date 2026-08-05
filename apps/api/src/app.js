@@ -7,6 +7,8 @@ import { config } from './config.js';
 import { query } from './db.js';
 import { authRoutes } from './routes/auth-routes.js';
 import { auditRoutes } from './routes/audit-routes.js';
+import { catalogRoutes } from './routes/catalog-routes.js';
+import { peopleRoutes } from './routes/people-routes.js';
 import { roleRoutes } from './routes/role-routes.js';
 import { userRoutes } from './routes/user-routes.js';
 
@@ -33,11 +35,6 @@ export async function buildApp(options = {}) {
     return { status: 'ok', service: 'legaldesk-api' };
   });
 
-  await app.register(authRoutes, { prefix: '/api/v1/auth' });
-  await app.register(auditRoutes, { prefix: '/api/v1/audit' });
-  await app.register(userRoutes, { prefix: '/api/v1/users' });
-  await app.register(roleRoutes, { prefix: '/api/v1/roles' });
-
   app.setNotFoundHandler((request, reply) => {
     reply.code(404).send({ message: 'Recurso no encontrado.' });
   });
@@ -57,6 +54,13 @@ export async function buildApp(options = {}) {
       .code(error.statusCode && error.statusCode < 500 ? error.statusCode : 500)
       .send({ message: error.statusCode && error.statusCode < 500 ? error.message : 'Ocurrió un error interno.' });
   });
+
+  await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  await app.register(auditRoutes, { prefix: '/api/v1/audit' });
+  await app.register(catalogRoutes, { prefix: '/api/v1/catalogs' });
+  await app.register(peopleRoutes, { prefix: '/api/v1/people' });
+  await app.register(userRoutes, { prefix: '/api/v1/users' });
+  await app.register(roleRoutes, { prefix: '/api/v1/roles' });
 
   return app;
 }

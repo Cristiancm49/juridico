@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 import { useAuth } from './auth/AuthContext.jsx';
 import { AppLayout } from './components/AppLayout.jsx';
 import { AuditPage } from './pages/AuditPage.jsx';
+import { CatalogsPage } from './pages/CatalogsPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
+import { PeoplePage } from './pages/PeoplePage.jsx';
 import { RolesPage } from './pages/RolesPage.jsx';
 import { UsersPage } from './pages/UsersPage.jsx';
 import { navigate, usePathname } from './router.js';
@@ -22,6 +24,8 @@ export function App() {
   const pathname = usePathname();
 
   const routePermissions = {
+    '/personas': 'requests.read',
+    '/catalogos': 'requests.read',
     '/usuarios': 'users.read',
     '/roles': 'roles.manage',
     '/auditoria': 'audit.read',
@@ -41,6 +45,8 @@ export function App() {
 
   const pages = {
     '/': <DashboardPage />,
+    '/personas': <PeoplePage />,
+    '/catalogos': <CatalogsPage />,
     '/usuarios': <UsersPage />,
     '/roles': <RolesPage />,
     '/auditoria': <AuditPage />,
