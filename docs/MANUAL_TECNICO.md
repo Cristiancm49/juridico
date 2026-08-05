@@ -84,6 +84,14 @@ El script comprueba el SHA-256, restaura PostgreSQL, restaura los objetos y comp
 
 ## 7. Verificación de una versión
 
+El comando recomendado ejecuta toda la aceptación técnica en orden:
+
+```powershell
+npm run verify
+```
+
+Su equivalente detallado es:
+
 ```powershell
 npm test
 npm run test:intake

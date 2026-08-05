@@ -41,6 +41,8 @@ Documentación de entrega:
 
 Para generar un respaldo local de PostgreSQL y MinIO ejecuta `npm run backup`. La restauración exige destinos explícitos y se documenta en el manual técnico.
 
+Antes de entregar una versión ejecuta `npm run verify`. Este comando realiza la regresión funcional, seguridad, rendimiento, respaldo/restauración temporal, compilación y auditoría de dependencias.
+
 ## Seguridad inicial
 
 - Contraseñas protegidas con Argon2id.
