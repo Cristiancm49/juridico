@@ -36,7 +36,7 @@ const selectRequest = `
     lr.subject,
     lr.description,
     lr.source,
-    lr.received_date AS "receivedDate",
+    TO_CHAR(lr.received_date, 'YYYY-MM-DD') AS "receivedDate",
     lr.created_at AS "createdAt",
     lr.updated_at AS "updatedAt",
     json_build_object(

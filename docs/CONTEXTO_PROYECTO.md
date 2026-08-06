@@ -404,3 +404,4 @@ npm run verify
 - 5 de agosto de 2026: reportes filtrables, tablero jurídico, CSV auditado y prueba de rendimiento con 1.000 expedientes y 2.000 tareas; cierre técnico del Sprint 6.
 - 5 de agosto de 2026: respaldo/restauración comprobados para PostgreSQL y MinIO, controles de arranque seguro, prueba de seguridad, manuales y matriz técnica de aceptación; Sprint 7 queda pendiente de ambiente y aprobación funcional.
 - 5 de agosto de 2026: se añadió `npm run verify` como puerta única de aceptación técnica; la ejecución completa terminó sin fallos y sin publicar el repositorio.
+- 5 de agosto de 2026: se normalizaron `receivedDate` y `openedDate` como `YYYY-MM-DD` en el API y se añadió formateo defensivo en React para evitar `Invalid time value` en solicitudes y expedientes.

@@ -81,6 +81,7 @@ async function validate() {
   assert.equal(created.statusCode, 201, created.body);
   fixture.requestId = created.json().request.id;
   assert.match(created.json().request.requestNumber, /^SOL-\d{4}-\d{6}$/);
+  assert.match(created.json().request.receivedDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(created.json().request.status.code, 'received');
 
   const found = await request('GET', `/api/v1/requests?search=${created.json().request.requestNumber}`);

@@ -84,6 +84,7 @@ async function validate() {
   });
   assert.equal(converted.statusCode, 201, converted.body);
   const convertedCase = converted.json().case;
+  assert.match(convertedCase.openedDate, /^\d{4}-\d{2}-\d{2}$/);
   fixture.caseIds.push(convertedCase.id);
   assert.match(convertedCase.caseNumber, /^EXP-\d{4}-\d{6}$/);
   assert.equal(convertedCase.originRequest.id, fixture.requestId);

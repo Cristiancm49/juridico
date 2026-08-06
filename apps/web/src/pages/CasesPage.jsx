@@ -2,6 +2,7 @@ import { Activity, BriefcaseBusiness, Download, Edit3, Eye, FileText, History, P
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { apiDownload, apiFetch } from '../api.js';
+import { formatDateOnly, toDateInputValue } from '../date-utils.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 
 function emptyForm() {
@@ -177,7 +178,7 @@ export function CasesPage() {
         description: detail.description,
         externalReference: detail.externalReference || '',
         authority: detail.authority || '',
-        openedDate: detail.openedDate,
+        openedDate: toDateInputValue(detail.openedDate),
       });
     } catch (error) {
       toast.error(error.message);
@@ -414,7 +415,7 @@ export function CasesPage() {
                   <td><span className="priority-badge"><i style={{ backgroundColor: item.priority.color }} />{item.priority.name}</span></td>
                   <td>{item.originRequest ? <span className="origin-badge">{item.originRequest.requestNumber}</span> : <span className="table-secondary">Creación manual</span>}</td>
                   <td><span className="request-status" style={{ color: item.status.color, backgroundColor: `${item.status.color}14` }}>{item.status.name}</span></td>
-                  <td>{new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${item.openedDate}T00:00:00Z`))}</td>
+                  <td>{formatDateOnly(item.openedDate)}</td>
                   <td className="actions-cell"><button className="icon-button" onClick={() => openEdit(item)} aria-label={`${can('cases.write') ? 'Editar' : 'Ver'} ${item.caseNumber}`} title={can('cases.write') ? 'Editar expediente' : 'Ver expediente'}>{can('cases.write') ? <Edit3 size={18} /> : <Eye size={18} />}</button></td>
                 </tr>
               ))}

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { formatDateOnly, toDateInputValue } from '../date-utils.js';
 import { navigate } from '../router.js';
 
 const sourceLabels = {
@@ -116,7 +117,7 @@ export function RequestsPage() {
         subject: detail.subject,
         description: detail.description,
         source: detail.source,
-        receivedDate: detail.receivedDate,
+        receivedDate: toDateInputValue(detail.receivedDate),
         statusCode: detail.status.code,
         changeComment: '',
       });
@@ -207,7 +208,7 @@ export function RequestsPage() {
                   <td><span className="tag">{item.legalArea.name}</span></td>
                   <td><span className="priority-badge"><i style={{ backgroundColor: item.priority.color }} />{item.priority.name}</span></td>
                   <td><span className="request-status" style={{ color: item.status.color, backgroundColor: `${item.status.color}14` }}>{item.status.name}</span></td>
-                  <td>{new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${item.receivedDate}T00:00:00Z`))}</td>
+                  <td>{formatDateOnly(item.receivedDate)}</td>
                   <td className="actions-cell"><div className="row-actions">{item.status.code === 'approved' && can('cases.write') && <button className="icon-button convert-button" disabled={convertingId === item.id} onClick={() => convertToCase(item)} aria-label={`Convertir ${item.requestNumber} en expediente`} title="Convertir en expediente"><BriefcaseBusiness size={18} /></button>}{can('requests.write') && <button className="icon-button" onClick={() => openEdit(item)} aria-label={`Editar ${item.requestNumber}`} title="Editar y ver historial"><Edit3 size={18} /></button>}</div></td>
                 </tr>
               ))}

@@ -44,7 +44,7 @@ const selectCase = `
     c.description,
     c.external_reference AS "externalReference",
     c.authority,
-    c.opened_date AS "openedDate",
+    TO_CHAR(c.opened_date, 'YYYY-MM-DD') AS "openedDate",
     c.created_at AS "createdAt",
     c.updated_at AS "updatedAt",
     json_build_object(
