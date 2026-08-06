@@ -136,21 +136,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--green-700); box-
 .metric-icon.blue { background: #e2edf5; color: #336783; }
 .metric-icon.green { background: #dff2e6; color: #287646; }
 .metric-card.accent { border-top: 3px solid var(--green-700); }
-.content-grid { display: grid; grid-template-columns: 1.7fr .8fr; gap: 20px; }
 .panel { background: white; border: 1px solid var(--line); border-radius: 17px; box-shadow: 0 4px 18px rgba(18,58,53,.035); }
-.progress-panel { padding: 25px; }
 .panel-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 19px; }
-.status-pill { padding: 7px 10px; border-radius: 999px; background: #e6f3ed; color: #287453; font-size: .68rem; font-weight: 700; }
-.roadmap-row { display: grid; grid-template-columns: 33px 1fr auto; align-items: center; gap: 11px; padding: 13px 10px; border-top: 1px solid #edf0ee; color: #83908c; font-size: .8rem; }
-.roadmap-row strong { font-size: .84rem; color: #52615d; }
-.roadmap-row.current { background: #f1f7f3; border-radius: 10px; color: var(--green-700); border-color: transparent; }
-.roadmap-row.current strong { color: var(--green-900); }
-.roadmap-number { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: #eef2f0; font-weight: 700; }
-.current .roadmap-number { background: var(--green-800); color: white; }
-.focus-panel { padding: 28px; color: white; background: linear-gradient(145deg, var(--green-900), var(--green-700)); display: flex; flex-direction: column; justify-content: center; }
-.focus-panel h2 { font-size: 1.7rem; line-height: 1.15; }
-.focus-panel p { color: #c2d9d3; line-height: 1.6; }
-.focus-link { margin-top: auto; padding-top: 20px; display: flex; justify-content: space-between; align-items: center; color: #ebc978; font-size: .78rem; font-weight: 700; }
 
 /* Tables and forms */
 .table-panel { overflow: hidden; }
@@ -456,7 +443,6 @@ legend { font-size: .72rem; font-weight: 800; color: #52615d; margin-bottom: 10p
 
 @media (max-width: 1080px) {
   .metric-grid { grid-template-columns: 1fr 1fr; }
-  .content-grid { grid-template-columns: 1fr; }
   .permission-groups { grid-template-columns: 1fr 1fr; }
   .audit-filters { grid-template-columns: 1fr 1fr; }
   .people-filters { grid-template-columns: 1fr 190px auto; }
