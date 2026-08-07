@@ -80,6 +80,10 @@ services:
     <<: *api-base
     command: ["node", "src/server.js"]
     restart: unless-stopped
+    networks:
+      internal:
+        aliases:
+          - legaldesk_backend
     depends_on:
       migrate:
         condition: service_completed_successfully

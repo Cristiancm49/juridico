@@ -43,7 +43,7 @@ Worker pg-boss ----------------------> PostgreSQL Docker :55432
 
 ```text
 Internet :80/:443 -> Nginx central (/opt/nexotech/deploy/proxy)
-                     -> legaldesk_web:80 -> backend:3100
+                     -> legaldesk_web:80 -> legaldesk_backend:3100
                                             -> PostgreSQL privado :5432
                                             -> MinIO privado :9000
                      worker alerts -------> PostgreSQL privado :5432
@@ -52,6 +52,7 @@ Internet :80/:443 -> Nginx central (/opt/nexotech/deploy/proxy)
 - Subdominio previsto: `legaldesk.nexosoft.tech`.
 - Proyecto previsto en el VPS: `/opt/legaldesk`.
 - Solo `web` se conecta a la red Docker externa `shared_proxy` con el alias único `legaldesk_web`.
+- El backend usa el alias interno único `legaldesk_backend` para evitar colisiones DNS con otros proyectos conectados a `shared_proxy`.
 - Backend, trabajador, PostgreSQL y MinIO usan una red Docker interna y no publican puertos del host.
 - Volúmenes persistentes: `legaldesk_postgres_data` y `legaldesk_minio_data`.
 - Secretos: `/opt/legaldesk/deploy/legaldesk.env`, permisos `600`, excluido de Git.
