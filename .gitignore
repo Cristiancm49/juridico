@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .env
+deploy/legaldesk.env
 coverage/
 *.log
 .DS_Store

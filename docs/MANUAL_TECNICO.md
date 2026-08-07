@@ -1,6 +1,6 @@
 # Manual técnico de LegalDesk
 
-Última actualización: 5 de agosto de 2026
+Última actualización: 6 de agosto de 2026
 
 ## 1. Arquitectura
 
@@ -114,7 +114,9 @@ No se debe liberar una versión con una prueba fallida o una vulnerabilidad crí
 
 ## 8. Producción y reversión
 
-No existe un despliegue externo autorizado todavía. Antes de producción se requiere:
+La configuración de producción para el VPS está preparada en `docker-compose.prod.yml`. El procedimiento operativo, DNS, secretos, proxy central, SSL, respaldo y actualización se encuentra en [DESPLIEGUE_VPS.md](DESPLIEGUE_VPS.md). El despliegue externo todavía requiere ejecutar ese procedimiento en el servidor.
+
+Antes de producción se requiere:
 
 1. HTTPS terminado en un proxy confiable, `COOKIE_SECURE=true` y `TRUST_PROXY=true` solo si el acceso directo al API está bloqueado.
 2. Secretos fuertes gestionados fuera del repositorio.

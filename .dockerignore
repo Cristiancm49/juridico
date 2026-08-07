@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+deploy/legaldesk.env
+node_modules
+**/node_modules
+**/dist
+backups
+tmp
+*.log
+.openai

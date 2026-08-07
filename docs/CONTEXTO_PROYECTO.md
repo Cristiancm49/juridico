@@ -1,7 +1,7 @@
 # Contexto vivo de LegalDesk
 
-Última actualización: 5 de agosto de 2026  
-Estado: Sprints 1, 2, 3, 4, 5 y 6 completados; Sprint 7 en curso, pendiente de ambiente y aceptación del sponsor
+Última actualización: 6 de agosto de 2026
+Estado: Sprints 1, 2, 3, 4, 5 y 6 completados; Sprint 7 en curso, pendiente de despliegue, monitoreo y aceptación del sponsor
 
 > Leer este archivo antes de implementar una funcionalidad. Actualizarlo cuando cambien la arquitectura, la base de datos, los permisos, las rutas o el estado del backlog.
 
@@ -38,6 +38,25 @@ Worker pg-boss ----------------------> PostgreSQL Docker :55432
 - Salud del API: `http://127.0.0.1:3100/api/health`
 - Consola local de MinIO: `http://127.0.0.1:59001`; no exponerla públicamente.
 - Las credenciales locales se leen desde `.env`; nunca documentar contraseñas reales aquí.
+
+### Topología de producción preparada
+
+```text
+Internet :80/:443 -> Nginx central (/opt/nexotech/deploy/proxy)
+                     -> legaldesk_web:80 -> backend:3100
+                                            -> PostgreSQL privado :5432
+                                            -> MinIO privado :9000
+                     worker alerts -------> PostgreSQL privado :5432
+```
+
+- Subdominio previsto: `legaldesk.nexosoft.tech`.
+- Proyecto previsto en el VPS: `/opt/legaldesk`.
+- Solo `web` se conecta a la red Docker externa `shared_proxy` con el alias único `legaldesk_web`.
+- Backend, trabajador, PostgreSQL y MinIO usan una red Docker interna y no publican puertos del host.
+- Volúmenes persistentes: `legaldesk_postgres_data` y `legaldesk_minio_data`.
+- Secretos: `/opt/legaldesk/deploy/legaldesk.env`, permisos `600`, excluido de Git.
+- Configuración y procedimiento: `docker-compose.prod.yml` y `docs/DESPLIEGUE_VPS.md`.
+- Estado: artefactos preparados y validados localmente; DNS, certificado y ejecución en el VPS siguen pendientes.
 
 ## 4. Estructura relevante
 
@@ -324,7 +343,7 @@ Medición local de cierre del sprint: resumen `36 ms` y exportación CSV `28 ms`
 - [x] Pruebas integrales y matriz técnica de aceptación RF-01 a RF-16.
 - [x] Revisión automatizada de sesión, cabeceras, autorización, validación, límite de acceso y dependencias.
 - [x] Procedimiento comprobado de respaldo y restauración de PostgreSQL y MinIO, incluyendo un objeto real temporal.
-- [ ] Configuración documentada para ambiente de pruebas y producción, sin desplegar hasta recibir autorización.
+- [x] Configuración documentada para el VPS de producción, sin puertos públicos para backend, PostgreSQL o MinIO.
 - [ ] Monitoreo centralizado del ambiente; salud, logs y procedimiento de reversión local ya están documentados.
 - [x] Manual técnico, manual de usuario y guía de operación.
 - [ ] Lista de aceptación y cierre.
@@ -383,8 +402,8 @@ npm run verify
 - Confirmación funcional de las siete áreas jurídicas y cuatro prioridades iniciales antes de permitir su edición.
 - Confirmación funcional de las transiciones iniciales de solicitudes: `received -> in_review/rejected`, `in_review -> approved/rejected`, `approved -> in_review`; `rejected` y `converted` son terminales.
 - Política definitiva de conservación de datos y documentos.
-- Proveedor de PostgreSQL y almacenamiento S3 para producción.
-- Ambiente de pruebas/producción, proxy HTTPS, destino externo cifrado de respaldos y plataforma de monitoreo.
+- Confirmar si PostgreSQL y MinIO continuarán autogestionados en el VPS o migrarán a servicios administrados cuando crezca la carga.
+- Destino externo cifrado de respaldos y plataforma de monitoreo.
 - Matriz de permisos validada por KAFA y Asociados.
 - Confirmación funcional de los indicadores y columnas del CSV antes de congelar el formato para usuarios finales.
 
@@ -406,3 +425,4 @@ npm run verify
 - 5 de agosto de 2026: se añadió `npm run verify` como puerta única de aceptación técnica; la ejecución completa terminó sin fallos y sin publicar el repositorio.
 - 5 de agosto de 2026: se normalizaron `receivedDate` y `openedDate` como `YYYY-MM-DD` en el API y se añadió formateo defensivo en React para evitar `Invalid time value` en solicitudes y expedientes.
 - 5 de agosto de 2026: se retiraron del tablero público las fases, sprints y pasos internos de implementación; el inicio conserva únicamente fecha e indicadores operativos.
+- 6 de agosto de 2026: se preparó el despliegue aislado en VPS para `legaldesk.nexosoft.tech`, con imágenes Docker, Compose de producción, proxy central, secretos de ejemplo, respaldo/restauración y guía de SSL; la ejecución en el servidor continúa pendiente.
