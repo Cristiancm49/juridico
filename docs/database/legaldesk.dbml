@@ -1,0 +1,406 @@
+Project legaldesk_es {
+  database_type: "PostgreSQL"
+  Note: "Modelo logico en espanol de LegalDesk; los nombres fisicos del SQL permanecen en ingles. Los objetos binarios se almacenan fuera de PostgreSQL en MinIO/S3; documentos conserva el catalogo y la trazabilidad."
+}
+
+Table usuarios {
+  id uuid [pk, default: `gen_random_uuid()`]
+  correo_electronico text [not null, unique]
+  nombre_completo text [not null]
+  hash_contrasena text [not null]
+  activo boolean [not null, default: true]
+  ultimo_acceso_en timestamptz
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+  debe_cambiar_contrasena boolean [not null, default: false]
+
+  Note: "El indice unico real usa LOWER(correo_electronico) y el correo se valida en minusculas."
+}
+
+Table roles {
+  id uuid [pk, default: `gen_random_uuid()`]
+  codigo text [not null, unique]
+  nombre text [not null]
+  descripcion text
+  rol_sistema boolean [not null, default: false]
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+}
+
+Table permisos {
+  id uuid [pk, default: `gen_random_uuid()`]
+  codigo text [not null, unique]
+  nombre text [not null]
+  modulo text [not null]
+}
+
+Table usuarios_roles {
+  usuario_id uuid [pk, not null]
+  rol_id uuid [pk, not null]
+  asignado_en timestamptz [not null, default: `now()`]
+}
+
+Table roles_permisos {
+  rol_id uuid [pk, not null]
+  permiso_id uuid [pk, not null]
+}
+
+Table sesiones {
+  id uuid [pk, default: `gen_random_uuid()`]
+  usuario_id uuid [not null]
+  hash_token text [not null, unique]
+  expira_en timestamptz [not null]
+  creado_en timestamptz [not null, default: `now()`]
+  direccion_ip inet
+  agente_usuario text
+}
+
+Table registros_auditoria {
+  id bigserial [pk]
+  usuario_id uuid
+  accion text [not null]
+  tipo_entidad text
+  entidad_id text
+  detalles jsonb [not null, default: `'{}'::jsonb`]
+  direccion_ip inet
+  agente_usuario text
+  creado_en timestamptz [not null, default: `now()`]
+
+  Note: "detalles es la parte semiestructurada JSONB de la auditoria."
+}
+
+Table personas {
+  id uuid [pk, default: `gen_random_uuid()`]
+  tipo_persona text [not null, note: "natural | legal"]
+  tipo_documento text [not null, note: "CC | CE | NIT | PASSPORT | TI"]
+  numero_documento text [not null]
+  nombre_completo text [not null]
+  correo_electronico text
+  telefono text
+  direccion text
+  ciudad text
+  notas text
+  activo boolean [not null, default: true]
+  creado_por uuid
+  actualizado_por uuid
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+
+  indexes {
+    (tipo_documento, numero_documento) [unique, name: "persona_documento_unico"]
+  }
+}
+
+Table areas_juridicas {
+  id uuid [pk, default: `gen_random_uuid()`]
+  codigo text [not null, unique]
+  nombre text [not null, unique]
+  descripcion text
+  activo boolean [not null, default: true]
+  orden smallint [not null, default: 0]
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+}
+
+Table prioridades {
+  id uuid [pk, default: `gen_random_uuid()`]
+  codigo text [not null, unique]
+  nombre text [not null, unique]
+  nivel smallint [not null, unique, note: "Entre 1 y 4"]
+  color text [not null]
+  activo boolean [not null, default: true]
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+}
+
+Table estados_solicitud {
+  id uuid [pk, default: `gen_random_uuid()`]
+  codigo text [not null, unique]
+  nombre text [not null, unique]
+  descripcion text
+  color text [not null]
+  orden smallint [not null, default: 0]
+  terminal boolean [not null, default: false]
+}
+
+Table solicitudes_juridicas {
+  id uuid [pk, default: `gen_random_uuid()`]
+  numero_solicitud text [not null, unique]
+  persona_id uuid [not null]
+  area_juridica_id uuid [not null]
+  prioridad_id uuid [not null]
+  estado_id uuid [not null]
+  asunto text [not null]
+  descripcion text [not null]
+  origen text [not null, note: "in_person | telefono | correo_electronico | referral | other"]
+  fecha_recepcion date [not null, default: `current_date`]
+  creado_por uuid
+  actualizado_por uuid
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+}
+
+Table historial_estados_solicitud {
+  id bigserial [pk]
+  solicitud_id uuid [not null]
+  estado_anterior_id uuid
+  estado_nuevo_id uuid [not null]
+  comentario text
+  cambiado_por uuid
+  creado_en timestamptz [not null, default: `now()`]
+}
+
+Table estados_expediente {
+  id uuid [pk, default: `gen_random_uuid()`]
+  codigo text [not null, unique]
+  nombre text [not null, unique]
+  descripcion text
+  color text [not null]
+  orden smallint [not null, default: 0]
+  terminal boolean [not null, default: false]
+}
+
+Table expedientes {
+  id uuid [pk, default: `gen_random_uuid()`]
+  numero_expediente text [not null, unique]
+  solicitud_origen_id uuid [unique]
+  persona_id uuid [not null]
+  area_juridica_id uuid [not null]
+  prioridad_id uuid [not null]
+  estado_id uuid [not null]
+  titulo text [not null]
+  descripcion text [not null]
+  referencia_externa text
+  autoridad text
+  fecha_apertura date [not null, default: `current_date`]
+  creado_por uuid
+  actualizado_por uuid
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+}
+
+Table asignaciones_expediente {
+  id bigserial [pk]
+  expediente_id uuid [not null]
+  usuario_id uuid [not null]
+  asignado_por uuid
+  comentario text
+  asignado_en timestamptz [not null, default: `now()`]
+  desasignado_en timestamptz
+
+  Note: "Solo puede existir una asignacion vigente por caso: indice unico parcial donde desasignado_en IS NULL."
+}
+
+Table historial_estados_expediente {
+  id bigserial [pk]
+  expediente_id uuid [not null]
+  estado_anterior_id uuid
+  estado_nuevo_id uuid [not null]
+  comentario text
+  cambiado_por uuid
+  creado_en timestamptz [not null, default: `now()`]
+}
+
+Table tipos_actuacion {
+  id uuid [pk, default: `gen_random_uuid()`]
+  codigo text [not null, unique]
+  nombre text [not null, unique]
+  descripcion text
+  color text [not null]
+  activo boolean [not null, default: true]
+  orden smallint [not null, default: 0]
+}
+
+Table actuaciones_juridicas {
+  id uuid [pk, default: `gen_random_uuid()`]
+  expediente_id uuid [not null]
+  tipo_actuacion_id uuid [not null]
+  titulo text [not null]
+  descripcion text [not null]
+  resultado text
+  ocurrido_en timestamptz [not null]
+  creado_por uuid
+  actualizado_por uuid
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+}
+
+Table categorias_documento {
+  id uuid [pk, default: `gen_random_uuid()`]
+  codigo text [not null, unique]
+  nombre text [not null, unique]
+  descripcion text
+  activo boolean [not null, default: true]
+  orden smallint [not null, default: 0]
+}
+
+Table documentos {
+  id uuid [pk, default: `gen_random_uuid()`]
+  expediente_id uuid [not null]
+  categoria_id uuid [not null]
+  grupo_documento_id uuid [not null, default: `gen_random_uuid()`]
+  numero_version integer [not null, default: 1]
+  es_vigente boolean [not null, default: true]
+  nombre_original text [not null]
+  clave_almacenamiento text [not null, unique, note: "Clave del objeto en MinIO/S3"]
+  tipo_mime text [not null]
+  extension text [not null]
+  tamano_bytes bigint [not null]
+  sha256 char(64) [not null]
+  descripcion text
+  cargado_por uuid
+  creado_en timestamptz [not null, default: `now()`]
+
+  indexes {
+    (grupo_documento_id, numero_version) [unique]
+  }
+
+  Note: "Un indice unico parcial garantiza una sola version vigente por grupo."
+}
+
+Table estados_tarea {
+  id uuid [pk, default: `gen_random_uuid()`]
+  codigo text [not null, unique]
+  nombre text [not null, unique]
+  color text [not null]
+  orden smallint [not null, default: 0]
+  terminal boolean [not null, default: false]
+}
+
+Table tareas {
+  id uuid [pk, default: `gen_random_uuid()`]
+  expediente_id uuid [not null]
+  responsable_id uuid [not null]
+  prioridad_id uuid [not null]
+  estado_id uuid [not null]
+  titulo text [not null]
+  descripcion text
+  vence_en timestamptz [not null]
+  dias_alerta "smallint[]" [not null, default: `ARRAY[7, 3, 1, 0]::smallint[]`]
+  completado_en timestamptz
+  creado_por uuid
+  actualizado_por uuid
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+}
+
+Table historial_estados_tarea {
+  id uuid [pk, default: `gen_random_uuid()`]
+  tarea_id uuid [not null]
+  estado_anterior_id uuid
+  estado_nuevo_id uuid [not null]
+  comentario text
+  cambiado_por uuid
+  creado_en timestamptz [not null, default: `now()`]
+}
+
+Table notificaciones {
+  id uuid [pk, default: `gen_random_uuid()`]
+  usuario_id uuid [not null]
+  tarea_id uuid [not null]
+  codigo_alerta text [not null]
+  vencimiento_registrado timestamptz [not null]
+  titulo text [not null]
+  mensaje text [not null]
+  leido_en timestamptz
+  creado_en timestamptz [not null, default: `now()`]
+
+  indexes {
+    (tarea_id, usuario_id, codigo_alerta, vencimiento_registrado) [unique]
+  }
+}
+
+Ref usuarios_roles_usuario: usuarios_roles.usuario_id > usuarios.id [delete: cascade]
+Ref usuarios_roles_rol: usuarios_roles.rol_id > roles.id [delete: restrict]
+Ref roles_permisos_rol: roles_permisos.rol_id > roles.id [delete: cascade]
+Ref roles_permisos_permiso: roles_permisos.permiso_id > permisos.id [delete: cascade]
+Ref sesiones_usuario: sesiones.usuario_id > usuarios.id [delete: cascade]
+Ref auditoria_usuario: registros_auditoria.usuario_id > usuarios.id [delete: set null]
+
+Ref personas_creado_por: personas.creado_por > usuarios.id [delete: set null]
+Ref personas_actualizado_por: personas.actualizado_por > usuarios.id [delete: set null]
+
+Ref solicitudes_persona: solicitudes_juridicas.persona_id > personas.id [delete: restrict]
+Ref solicitudes_area: solicitudes_juridicas.area_juridica_id > areas_juridicas.id [delete: restrict]
+Ref solicitudes_prioridad: solicitudes_juridicas.prioridad_id > prioridades.id [delete: restrict]
+Ref solicitudes_estado: solicitudes_juridicas.estado_id > estados_solicitud.id [delete: restrict]
+Ref solicitudes_creado_por: solicitudes_juridicas.creado_por > usuarios.id [delete: set null]
+Ref solicitudes_actualizado_por: solicitudes_juridicas.actualizado_por > usuarios.id [delete: set null]
+Ref historial_solicitud: historial_estados_solicitud.solicitud_id > solicitudes_juridicas.id [delete: cascade]
+Ref historial_estado_anterior: historial_estados_solicitud.estado_anterior_id > estados_solicitud.id [delete: restrict]
+Ref historial_estado_nuevo: historial_estados_solicitud.estado_nuevo_id > estados_solicitud.id [delete: restrict]
+Ref historial_usuario: historial_estados_solicitud.cambiado_por > usuarios.id [delete: set null]
+
+Ref expedientes_solicitud_origen: expedientes.solicitud_origen_id - solicitudes_juridicas.id [delete: restrict]
+Ref expedientes_persona: expedientes.persona_id > personas.id [delete: restrict]
+Ref expedientes_area: expedientes.area_juridica_id > areas_juridicas.id [delete: restrict]
+Ref expedientes_prioridad: expedientes.prioridad_id > prioridades.id [delete: restrict]
+Ref expedientes_estado: expedientes.estado_id > estados_expediente.id [delete: restrict]
+Ref expedientes_creado_por: expedientes.creado_por > usuarios.id [delete: set null]
+Ref expedientes_actualizado_por: expedientes.actualizado_por > usuarios.id [delete: set null]
+Ref asignaciones_expediente_ref: asignaciones_expediente.expediente_id > expedientes.id [delete: cascade]
+Ref asignaciones_usuario: asignaciones_expediente.usuario_id > usuarios.id [delete: restrict]
+Ref asignaciones_asignado_por: asignaciones_expediente.asignado_por > usuarios.id [delete: set null]
+Ref historial_expediente: historial_estados_expediente.expediente_id > expedientes.id [delete: cascade]
+Ref historial_expediente_estado_anterior: historial_estados_expediente.estado_anterior_id > estados_expediente.id [delete: restrict]
+Ref historial_expediente_estado_nuevo: historial_estados_expediente.estado_nuevo_id > estados_expediente.id [delete: restrict]
+Ref historial_expediente_usuario: historial_estados_expediente.cambiado_por > usuarios.id [delete: set null]
+
+Ref actuaciones_expediente: actuaciones_juridicas.expediente_id > expedientes.id [delete: cascade]
+Ref actuaciones_tipo: actuaciones_juridicas.tipo_actuacion_id > tipos_actuacion.id [delete: restrict]
+Ref actuaciones_creado_por: actuaciones_juridicas.creado_por > usuarios.id [delete: set null]
+Ref actuaciones_actualizado_por: actuaciones_juridicas.actualizado_por > usuarios.id [delete: set null]
+
+Ref documentos_expediente: documentos.expediente_id > expedientes.id [delete: restrict]
+Ref documentos_categoria: documentos.categoria_id > categorias_documento.id [delete: restrict]
+Ref documentos_cargado_por: documentos.cargado_por > usuarios.id [delete: set null]
+
+Ref tareas_expediente: tareas.expediente_id > expedientes.id [delete: restrict]
+Ref tareas_responsable: tareas.responsable_id > usuarios.id [delete: restrict]
+Ref tareas_prioridad: tareas.prioridad_id > prioridades.id [delete: restrict]
+Ref tareas_estado: tareas.estado_id > estados_tarea.id [delete: restrict]
+Ref tareas_creado_por: tareas.creado_por > usuarios.id [delete: set null]
+Ref tareas_actualizado_por: tareas.actualizado_por > usuarios.id [delete: set null]
+Ref historial_tarea: historial_estados_tarea.tarea_id > tareas.id [delete: cascade]
+Ref historial_tarea_estado_anterior: historial_estados_tarea.estado_anterior_id > estados_tarea.id [delete: restrict]
+Ref historial_tarea_estado_nuevo: historial_estados_tarea.estado_nuevo_id > estados_tarea.id [delete: restrict]
+Ref historial_tarea_usuario: historial_estados_tarea.cambiado_por > usuarios.id [delete: set null]
+Ref notificaciones_usuario: notificaciones.usuario_id > usuarios.id [delete: cascade]
+Ref notificaciones_tarea: notificaciones.tarea_id > tareas.id [delete: cascade]
+
+TableGroup seguridad {
+  usuarios
+  roles
+  permisos
+  usuarios_roles
+  roles_permisos
+  sesiones
+  registros_auditoria
+}
+
+TableGroup solicitudes {
+  personas
+  areas_juridicas
+  prioridades
+  estados_solicitud
+  solicitudes_juridicas
+  historial_estados_solicitud
+}
+
+TableGroup expedientes {
+  estados_expediente
+  expedientes
+  asignaciones_expediente
+  historial_estados_expediente
+  tipos_actuacion
+  actuaciones_juridicas
+  categorias_documento
+  documentos
+}
+
+TableGroup tareas {
+  estados_tarea
+  tareas
+  historial_estados_tarea
+  notificaciones
+}
