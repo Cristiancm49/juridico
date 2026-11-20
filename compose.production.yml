@@ -1,0 +1,99 @@
+name: consultorio-contable
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "${MSSQL_PID:-Express}"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Define MSSQL_SA_PASSWORD en .env.production}"
+    volumes:
+      - sql_data:/var/opt/mssql
+      - sql_backups:/var/opt/mssql/backups
+    networks:
+      - internal
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=ConsultorioContable;User Id=sa;Password=${MSSQL_SA_PASSWORD:?Define MSSQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+      Database__ApplyMigrationsOnStartup: "true"
+      Jwt__Issuer: ConsultorioContable.Api
+      Jwt__Audience: ConsultorioContable.Web
+      Jwt__SigningKey: "${JWT_SIGNING_KEY:?Define JWT_SIGNING_KEY en .env.production}"
+      Jwt__ExpirationMinutes: "${JWT_EXPIRATION_MINUTES:-60}"
+      Gemini__Enabled: "${GEMINI_ENABLED:-true}"
+      Gemini__ApiKey: "${GEMINI_API_KEY:-}"
+      Gemini__Model: "${GEMINI_MODEL:-gemini-2.5-flash}"
+      Seed__Enabled: "true"
+      Seed__DemoData: "${SEED_DEMO_DATA:-false}"
+      Seed__AdminName: "${ADMIN_NAME:?Define ADMIN_NAME en .env.production}"
+      Seed__AdminEmail: "${ADMIN_EMAIL:?Define ADMIN_EMAIL en .env.production}"
+      Seed__AdminPassword: "${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en .env.production}"
+      Seed__Users__0__Name: "${INITIAL_USER_1_NAME:-}"
+      Seed__Users__0__Email: "${INITIAL_USER_1_EMAIL:-}"
+      Seed__Users__0__Password: "${INITIAL_USER_1_PASSWORD:-}"
+      Seed__Users__0__Role: "${INITIAL_USER_1_ROLE:-}"
+      Seed__Users__1__Name: "${INITIAL_USER_2_NAME:-}"
+      Seed__Users__1__Email: "${INITIAL_USER_2_EMAIL:-}"
+      Seed__Users__1__Password: "${INITIAL_USER_2_PASSWORD:-}"
+      Seed__Users__1__Role: "${INITIAL_USER_2_ROLE:-}"
+      Seed__Users__2__Name: "${INITIAL_USER_3_NAME:-}"
+      Seed__Users__2__Email: "${INITIAL_USER_3_EMAIL:-}"
+      Seed__Users__2__Password: "${INITIAL_USER_3_PASSWORD:-}"
+      Seed__Users__2__Role: "${INITIAL_USER_3_ROLE:-}"
+      Seed__Users__3__Name: "${INITIAL_USER_4_NAME:-}"
+      Seed__Users__3__Email: "${INITIAL_USER_4_EMAIL:-}"
+      Seed__Users__3__Password: "${INITIAL_USER_4_PASSWORD:-}"
+      Seed__Users__3__Role: "${INITIAL_USER_4_ROLE:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+      - web
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: "${APP_DOMAIN:?Define APP_DOMAIN en .env.production}"
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+
+networks:
+  internal:
+    internal: true
+  web:
+
+volumes:
+  sql_data:
+  sql_backups:
+  caddy_data:
+  caddy_config:
+

@@ -1,34 +1,18 @@
 {
-  "name": "legaldesk",
-  "version": "0.1.0",
+  "name": "consultorio-contable",
+  "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "apps/api",
-    "apps/web"
+    "frontend"
   ],
   "scripts": {
-    "dev": "concurrently -n API,WEB,ALERTS -c blue,green,yellow \"npm run dev --workspace @legaldesk/api\" \"npm run dev --workspace @legaldesk/web\" \"npm run dev:worker --workspace @legaldesk/api\"",
-    "build": "npm run build --workspace @legaldesk/web",
-    "test": "npm run test --workspaces --if-present",
-    "test:cases": "npm run test:cases --workspace @legaldesk/api",
-    "test:case-tracking": "npm run test:case-tracking --workspace @legaldesk/api",
-    "test:actions": "npm run test:actions --workspace @legaldesk/api",
-    "test:documents": "npm run test:documents --workspace @legaldesk/api",
-    "test:tasks": "npm run test:tasks --workspace @legaldesk/api",
-    "test:reports": "npm run test:reports --workspace @legaldesk/api",
-    "test:performance": "npm run test:performance --workspace @legaldesk/api",
-    "test:security": "npm run test:security --workspace @legaldesk/api",
-    "worker": "npm run worker --workspace @legaldesk/api",
-    "backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup.ps1",
-    "test:backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-backup-restore.ps1",
-    "test:intake": "npm run test:intake --workspace @legaldesk/api",
-    "test:requests": "npm run test:requests --workspace @legaldesk/api",
-    "test:roles": "npm run test:roles --workspace @legaldesk/api",
-    "audit:prod": "npm audit --omit=dev",
-    "verify": "npm test && npm run test:intake && npm run test:requests && npm run test:cases && npm run test:case-tracking && npm run test:actions && npm run test:documents && npm run test:tasks && npm run test:roles && npm run test:reports && npm run test:performance && npm run test:security && npm run test:backup && npm run build && npm run audit:prod",
-    "db:migrate": "npm run db:migrate --workspace @legaldesk/api",
-    "db:seed": "npm run db:seed --workspace @legaldesk/api",
-    "start": "npm run start --workspace @legaldesk/api"
+    "dev": "concurrently -n API,WEB -c blue,green \"dotnet run --project backend/src/ConsultorioContable.Api --launch-profile http\" \"npm run dev --workspace @consultorio/web\"",
+    "build": "dotnet build backend/ConsultorioContable.sln --no-restore && npm run build --workspace @consultorio/web",
+    "test": "dotnet test backend/ConsultorioContable.sln --no-restore",
+    "verify": "npm run build && npm test",
+    "db:up": "docker compose -f bd/docker-compose.yml up -d",
+    "db:down": "docker compose -f bd/docker-compose.yml down",
+    "db:logs": "docker compose -f bd/docker-compose.yml logs -f sqlserver"
   },
   "devDependencies": {
     "concurrently": "^9.2.0"

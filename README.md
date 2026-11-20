@@ -1,59 +1,140 @@
-# LegalDesk
+# Consultorio Contable
 
-Sistema web para gestionar solicitudes, expedientes y procesos jurídicos de KAFA y Asociados.
+Sistema de Asesoría y Apoyo Contable de la Universidad de la Amazonia.
 
-La aplicación usa JavaScript, React, Node.js, Fastify, PostgreSQL y consultas SQL directas. No utiliza TypeScript ni ORM.
+## Tecnologías
 
-## Requisitos
+- Backend: .NET 8, ASP.NET Core, Entity Framework Core e Identity/JWT.
+- Frontend: React 19 y Vite.
+- Base de datos: SQL Server 2022 en Docker.
+- Arquitectura: cebolla (`Domain`, `Application`, `Infrastructure`, `Api`).
 
-- Node.js 22.12 o superior
-- npm
-- Docker Desktop para PostgreSQL y el almacenamiento privado MinIO
+## Asistente de casos
 
-## Preparación local
+Los usuarios con rol administrador, coordinadora o jefe de programa pueden
+consultar los casos en lenguaje natural desde `/asistente`. El asistente es de
+solo lectura y responde con datos actuales de SQL Server sobre casos pendientes,
+activos, cerrados, sin asignar y retrasados. Un caso se considera retrasado si
+permanece abierto y no registra actividad durante 30 días o más.
 
-1. Copiar `.env.example` como `.env` y cambiar la contraseña inicial.
-2. Ejecutar `npm install`.
-3. Iniciar PostgreSQL y MinIO con `docker compose up -d`.
-4. Ejecutar `npm run db:migrate`.
-5. Ejecutar `npm run db:seed`.
-6. Iniciar el sistema con `npm run dev`.
+También permite consultar:
 
-`npm run dev` inicia la interfaz, el API y el trabajador de alertas. En una ejecución separada puede iniciarse solamente el trabajador con `npm run worker`.
+- casos asignados a docentes o estudiantes;
+- carga activa por responsable y quién tiene mayor carga;
+- sesiones realizadas y próximas;
+- cantidades de compromisos abiertos por sesión;
+- documentos faltantes y versiones registradas;
+- solicitudes pendientes de convertirse en caso;
+- comparaciones por área, periodo, responsable, estado o mes.
 
-La interfaz estará en `http://localhost:5173` y el API en `http://localhost:3100`.
-La consola local de almacenamiento estará en `http://localhost:59001`; no debe exponerse en producción.
+Gemini puede interpretar expresiones más naturales antes de que el backend
+aplique los filtros. La IA no tiene acceso directo a SQL Server y solo recibe
+la pregunta, la fecha actual y los catálogos de áreas y periodos; los casos,
+listados de personas, nombres de solicitantes y credenciales permanecen en el backend. Si Gemini no está
+configurado o no responde, el clasificador local continúa funcionando.
+
+Los documentos faltantes usan una regla operativa explícita: todo caso debe
+tener al menos un soporte y los casos terminales deben incluir un informe final.
+Los compromisos se reportan como cantidades por sesión porque el modelo actual
+no almacena todavía tareas individuales con fecha y estado.
+
+Para activar Gemini, crea una clave en Google AI Studio y guárdala en los
+secretos locales de .NET. Este valor queda fuera del repositorio:
+
+```powershell
+dotnet user-secrets set "Gemini:ApiKey" "TU_CLAVE" --project backend/src/ConsultorioContable.Api
+npm run dev
+```
+
+También se admiten las variables `GEMINI_API_KEY` y `Gemini__ApiKey`. No guardes
+la clave en `appsettings.json`.
 
 ## Estructura
 
-- `apps/web`: interfaz React.
-- `apps/api`: API, autenticación y consultas SQL.
-- `apps/api/db/migrations`: migraciones SQL versionadas.
-- `docs`: análisis funcional y técnico.
+```text
+consultorio-contable/
+├── backend/
+│   ├── src/
+│   │   ├── ConsultorioContable.Domain/
+│   │   ├── ConsultorioContable.Application/
+│   │   ├── ConsultorioContable.Infrastructure/
+│   │   └── ConsultorioContable.Api/
+│   ├── tests/
+│   └── ConsultorioContable.sln
+├── frontend/
+├── bd/
+│   ├── docker-compose.yml
+│   └── initial.sql
+├── package.json
+└── README.md
+```
 
-Antes de añadir una funcionalidad, revisar [docs/CONTEXTO_PROYECTO.md](docs/CONTEXTO_PROYECTO.md). Es el resumen vivo de arquitectura, base de datos, rutas, permisos, convenciones y estado del backlog.
+- `backend`: API, capas de arquitectura cebolla y pruebas de .NET.
+- `frontend`: interfaz React/Vite.
+- `bd`: configuración de SQL Server y script SQL de referencia.
+- raíz: comandos que coordinan todo el proyecto.
 
-Documentación de entrega:
+## Base de datos
 
-- [Manual técnico](docs/MANUAL_TECNICO.md)
-- [Manual de usuario](docs/MANUAL_USUARIO.md)
-- [Matriz de aceptación](docs/MATRIZ_ACEPTACION.md)
-- [Despliegue en VPS](docs/DESPLIEGUE_VPS.md)
+El modelo mantiene las 23 tablas de negocio definidas para el Consultorio
+Contable, además de las tablas auxiliares de ASP.NET Core Identity y la tabla
+de sesiones operativas. Entity Framework Core es la fuente de verdad del
+esquema.
 
-Para generar un respaldo local de PostgreSQL y MinIO ejecuta `npm run backup`. La restauración exige destinos explícitos y se documenta en el manual técnico.
+- Las migraciones están en `backend/src/ConsultorioContable.Infrastructure/Persistence/Migrations`.
+- `bd/initial.sql` es el script idempotente completo generado desde esas migraciones.
+- La API aplica automáticamente las migraciones pendientes en desarrollo.
 
-Antes de entregar una versión ejecuta `npm run verify`. Este comando realiza la regresión funcional, seguridad, rendimiento, respaldo/restauración temporal, compilación y auditoría de dependencias.
+## Preparar el proyecto
 
-## Seguridad inicial
+Desde esta carpeta:
 
-- Contraseñas protegidas con Argon2id.
-- Sesiones opacas guardadas como hash en PostgreSQL.
-- Cookie de sesión `HttpOnly` y `SameSite=Lax`.
-- Verificación de permisos en cada endpoint protegido.
-- Consultas parametrizadas para evitar inyección SQL.
-- Registro de accesos y cambios administrativos.
-- Edición administrativa de nombre, correo, roles y contraseña temporal.
-- Cambio personal de contraseña verificando la contraseña actual.
-- Cierre automático de las demás sesiones después de cambiar la contraseña.
-- Contraseña temporal obligatoria para cuentas creadas o restablecidas por un administrador.
-- Bitácora de auditoría con filtros y paginación.
+```powershell
+npm install
+dotnet tool restore --tool-manifest backend/.config/dotnet-tools.json
+dotnet restore backend/ConsultorioContable.sln
+npm run db:up
+```
+
+La API aplica las migraciones y carga los datos locales al iniciar.
+
+## Ejecutar
+
+```powershell
+npm run dev
+```
+
+- Frontend: `http://localhost:5174`
+- API: `http://localhost:5298`
+- Swagger: `http://localhost:5298/swagger`
+- SQL Server: `localhost,14333`
+
+## Desplegar en un VPS
+
+El repositorio incluye un despliegue de produccion con Docker Compose, SQL
+Server persistente, HTTPS automatico, migraciones y creacion segura de usuarios
+iniciales.
+
+1. Copia `.env.production.example` como `.env.production`.
+2. Configura el dominio, contraseñas, JWT, Gemini y usuarios iniciales.
+3. Ejecuta:
+
+```bash
+docker compose --env-file .env.production -f compose.production.yml up -d --build
+```
+
+Consulta [DEPLOYMENT.md](DEPLOYMENT.md) para los requisitos, copias de seguridad,
+actualizaciones y diagnostico.
+
+## Verificar
+
+```powershell
+npm run verify
+```
+
+## Credenciales locales
+
+- Usuario: `admin@consultorio.local`
+- Contraseña: `Admin_Local_2026!`
+
+Las credenciales incluidas son exclusivamente para desarrollo local. En producción deben reemplazarse mediante secretos del entorno.

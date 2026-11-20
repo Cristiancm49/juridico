@@ -1,0 +1,47 @@
+@ConsultorioContable.Api_HostAddress = http://localhost:5298
+@solicitudId = 00000000-0000-0000-0000-000000000000
+@accessToken = pega-aqui-el-token-del-login
+
+GET {{ConsultorioContable.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+POST {{ConsultorioContable.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@consultorio.local",
+  "password": "Admin_Local_2026!"
+}
+
+###
+
+POST {{ConsultorioContable.Api_HostAddress}}/api/solicitudes
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "solicitanteId": "40000000-0000-0000-0000-000000000001",
+  "areaAsesoriaId": "20000000-0000-0000-0000-000000000001",
+  "periodoAcademicoId": "10000000-0000-0000-0000-000000000001",
+  "asunto": "Revision de costos",
+  "descripcionNecesidad": "La empresa necesita revisar su estructura de costos.",
+  "canalRecepcion": "Web"
+}
+
+###
+
+GET {{ConsultorioContable.Api_HostAddress}}/api/solicitudes/{{solicitudId}}
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+###
+
+POST {{ConsultorioContable.Api_HostAddress}}/api/solicitudes/{{solicitudId}}/transiciones
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "transicion": "IniciarRevision"
+}
