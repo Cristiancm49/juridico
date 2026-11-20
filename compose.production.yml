@@ -64,36 +64,31 @@ services:
       db:
         condition: service_healthy
     networks:
-      - internal
-      - web
+      internal: {}
+      shared_proxy:
+        aliases:
+          - consultorio-api
 
   web:
     build:
       context: .
       dockerfile: frontend/Dockerfile
     restart: unless-stopped
-    environment:
-      APP_DOMAIN: "${APP_DOMAIN:?Define APP_DOMAIN en .env.production}"
     depends_on:
       - api
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - caddy_data:/data
-      - caddy_config:/config
     networks:
-      - web
+      shared_proxy:
+        aliases:
+          - consultorio-frontend
 
 networks:
   internal:
     internal: true
-  web:
+  shared_proxy:
+    external: true
+    name: shared_proxy
 
 volumes:
   sql_data:
   sql_backups:
-  caddy_data:
-  caddy_config:
 

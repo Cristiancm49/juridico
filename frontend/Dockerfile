@@ -8,8 +8,8 @@ RUN npm ci --workspace @consultorio/web --include-workspace-root
 COPY frontend ./frontend
 RUN npm run build --workspace @consultorio/web
 
-FROM caddy:2-alpine
-COPY deploy/Caddyfile /etc/caddy/Caddyfile
-COPY --from=build /src/frontend/dist /srv
-EXPOSE 80 443 443/udp
+FROM nginx:1.27-alpine
+COPY deploy/frontend.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /src/frontend/dist /usr/share/nginx/html
+EXPOSE 80
 

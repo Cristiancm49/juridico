@@ -1,28 +1,76 @@
-# Despliegue en VPS
+# Despliegue junto a SaelSoft en Contabo
 
-El despliegue de produccion usa tres contenedores:
+Este repositorio se despliega como una aplicacion independiente en el VPS que ya
+publica `nexosoft.tech`. No reemplaza SaelSoft ni abre nuevamente los puertos 80
+y 443.
 
-- `web`: React compilado y servido por Caddy, con HTTPS automatico.
-- `api`: ASP.NET Core 8, migraciones y autenticacion JWT.
-- `db`: SQL Server 2022 con almacenamiento persistente.
+La direccion prevista para el consultorio es:
 
-La API y SQL Server no publican puertos hacia Internet. Solo Caddy expone los
-puertos 80 y 443.
+```text
+https://consultorio.nexosoft.tech
+```
 
-## 1. Requisitos del VPS
+## Arquitectura
 
-- Ubuntu 22.04 o 24.04 de 64 bits.
-- Docker Engine con el complemento Docker Compose.
-- Recomendado: 4 GB de RAM, 2 CPU y 25 GB libres.
-- Puertos TCP 80 y 443 abiertos; UDP 443 es opcional para HTTP/3.
-- Un dominio con un registro `A` apuntando a la IP del VPS para HTTPS publico.
+- `web`: React compilado y servido por Nginx en la red Docker compartida.
+- `api`: ASP.NET Core 8 en el puerto interno `8080`.
+- `db`: SQL Server 2022 Express, accesible solo desde la red interna.
+- `shared_proxy`: red externa compartida con el Nginx central de SaelSoft.
 
-SQL Server necesita al menos 2 GB de memoria disponible. El archivo de
-produccion usa la edicion Express, gratuita y limitada a bases de 10 GB.
+Los alias publicados en `shared_proxy` son:
 
-## 2. Preparar secretos y usuarios
+- `consultorio-frontend`
+- `consultorio-api`
 
-En la raiz del proyecto:
+El proxy central es el unico contenedor que publica 80 y 443.
+
+## 1. DNS
+
+Crea en Contabo un registro `A`:
+
+```text
+Nombre: consultorio
+Destino: 169.58.135.0
+```
+
+El certificado actual de `nexosoft.tech` y `www.nexosoft.tech` no incluye este
+nuevo subdominio. Certbot debe emitir uno adicional.
+
+## 2. Clonar el segundo repositorio
+
+En el VPS, usa una carpeta separada de SaelSoft:
+
+```bash
+cd /opt
+sudo git clone URL_DEL_REPOSITORIO consultorio-contable
+sudo chown -R "$USER":"$USER" /opt/consultorio-contable
+cd /opt/consultorio-contable
+```
+
+La estructura esperada comienza directamente en la raiz:
+
+```text
+backend/
+frontend/
+bd/
+deploy/
+compose.production.yml
+package.json
+```
+
+No debe existir otra carpeta `consultorio-contable/consultorio-contable`.
+
+## 3. Red compartida
+
+SaelSoft ya utiliza esta red. El comando es idempotente y solo debe crearla si
+no existe:
+
+```bash
+docker network inspect shared_proxy >/dev/null 2>&1 || \
+  docker network create shared_proxy
+```
+
+## 4. Secretos y usuarios
 
 ```bash
 cp .env.production.example .env.production
@@ -30,37 +78,19 @@ nano .env.production
 chmod 600 .env.production
 ```
 
-Completa obligatoriamente:
+Configura SQL Server, JWT, Gemini, el administrador y los usuarios iniciales.
+Genera el secreto JWT con:
 
-- `APP_DOMAIN`: dominio publico. Sin dominio puede usarse
-  `http://IP_PUBLICA_DEL_VPS`, pero no tendra HTTPS valido.
-- `MSSQL_SA_PASSWORD`: contraseña robusta para SQL Server.
-- `JWT_SIGNING_KEY`: secreto aleatorio de al menos 32 bytes. Puede generarse con
-  `openssl rand -base64 48`.
-- `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`.
-- `GEMINI_API_KEY` si el asistente usara Gemini.
+```bash
+openssl rand -base64 48
+```
 
-Los cuatro bloques `INITIAL_USER_*` permiten crear cuentas adicionales en el
-primer arranque. Los roles aceptados son:
+`SEED_DEMO_DATA` debe mantenerse en `false`. Si se restaura la base local, las
+cuentas demostrativas conocidas se desactivan sin borrar el historial.
 
-- `ADMIN`
-- `JEFE_PROGRAMA`
-- `COORDINADORA`
-- `DOCENTE`
-- `ESTUDIANTE`
-- `SOLICITANTE`
+## 5. Iniciar el consultorio
 
-Deja completamente vacio cualquier bloque que no necesites. Las cuentas son
-idempotentes: reiniciar los contenedores no las duplica ni restablece sus claves.
-Despues del primer acceso, el administrador puede crear mas usuarios desde
-**Usuarios y roles**.
-
-`SEED_DEMO_DATA` debe permanecer en `false` en produccion. Esto crea usuarios y
-catalogos necesarios, pero evita cargar empresas, solicitudes y casos ficticios.
-Si se restaura una base local, el arranque tambien desactiva las cuentas de
-demostracion conocidas sin borrar sus registros historicos.
-
-## 3. Iniciar la aplicacion
+Desde `/opt/consultorio-contable`:
 
 ```bash
 docker compose --env-file .env.production -f compose.production.yml config
@@ -68,72 +98,81 @@ docker compose --env-file .env.production -f compose.production.yml up -d --buil
 docker compose --env-file .env.production -f compose.production.yml ps
 ```
 
-La primera ejecucion puede tardar varios minutos mientras descarga las imagenes,
-inicia SQL Server y aplica las migraciones.
+SQL Server y la API no publican puertos en el host. El frontend y la API quedan
+disponibles para el Nginx central mediante `shared_proxy`.
 
-Comprobar el sistema:
+## 6. Configurar el proxy central
+
+Define la ruta real del proxy de SaelSoft. Ejemplo:
 
 ```bash
-curl -f https://TU_DOMINIO/health
+CONSULTORIO_DIR=/opt/consultorio-contable
+PROXY_DIR=/opt/SaelSoft/deploy/proxy
+```
+
+Primero instala la configuracion HTTP:
+
+```bash
+cp "$CONSULTORIO_DIR/deploy/proxy/consultorio.http.conf" \
+  "$PROXY_DIR/nginx/conf.d/consultorio.conf"
+cd "$PROXY_DIR"
+docker compose exec nginx nginx -t
+docker compose exec nginx nginx -s reload
+```
+
+Emite el certificado del nuevo subdominio:
+
+```bash
+docker compose --profile tools run --rm certbot certonly \
+  --webroot -w /var/www/certbot \
+  -d consultorio.nexosoft.tech \
+  --email TU_CORREO \
+  --agree-tos --no-eff-email
+```
+
+Activa HTTPS:
+
+```bash
+cp "$CONSULTORIO_DIR/deploy/proxy/consultorio.https.conf" \
+  "$PROXY_DIR/nginx/conf.d/consultorio.conf"
+docker compose exec nginx nginx -t
+docker compose exec nginx nginx -s reload
+```
+
+Esto no modifica la configuracion de `nexosoft.tech`; agrega un bloque separado
+para `consultorio.nexosoft.tech`.
+
+## 7. Restaurar la base actual
+
+Copia el `.bak` dentro de `/opt/consultorio-contable/backups/` y ejecuta:
+
+```bash
+chmod +x deploy/backup.sh deploy/restore.sh
+RESTORE_CONFIRM=YES ./deploy/restore.sh \
+  backups/ConsultorioContable-pre-vps-20261119-221805.bak
+```
+
+La restauracion conserva usuarios, roles, solicitudes, casos y documentos. Al
+reiniciarse, la API crea el nuevo administrador definido en `.env.production`.
+
+## 8. Validacion
+
+```bash
+curl -f https://consultorio.nexosoft.tech/api/health
 docker compose --env-file .env.production -f compose.production.yml logs --tail=100 api
 ```
 
-El endpoint `/health` debe responder `Healthy`. Luego abre el dominio e inicia
-sesion con `ADMIN_EMAIL` y `ADMIN_PASSWORD`.
+La primera orden debe responder `Healthy`.
 
-## 4. Copias de seguridad
-
-Dar permiso al script una sola vez:
+## 9. Actualizaciones
 
 ```bash
-chmod +x deploy/backup.sh
-```
-
-Crear un respaldo:
-
-```bash
+cd /opt/consultorio-contable
 ./deploy/backup.sh
-```
-
-Los archivos `.bak` se guardan en `backups/`, una carpeta ignorada por Git.
-Copialos tambien a un almacenamiento externo al VPS.
-
-Restaurar un respaldo reemplaza la base actual y requiere una confirmacion
-explicita:
-
-```bash
-chmod +x deploy/restore.sh
-RESTORE_CONFIRM=YES ./deploy/restore.sh backups/ConsultorioContable-FECHA.bak
-```
-
-## 5. Actualizar una version
-
-Antes de actualizar, crea un respaldo. Luego:
-
-```bash
 git pull
 docker compose --env-file .env.production -f compose.production.yml up -d --build
-docker image prune -f
 ```
 
-La API aplica automaticamente las migraciones pendientes al arrancar.
-
-## 6. Operacion y diagnostico
-
-```bash
-# Estado
-docker compose --env-file .env.production -f compose.production.yml ps
-
-# Registros recientes
-docker compose --env-file .env.production -f compose.production.yml logs --tail=200
-
-# Seguir registros de la API
-docker compose --env-file .env.production -f compose.production.yml logs -f api
-
-# Reiniciar servicios
-docker compose --env-file .env.production -f compose.production.yml restart
-```
-
-No publiques el puerto `1433` de SQL Server ni el `8080` de la API. Tampoco
-subas `.env.production` al repositorio.
+No ejecutes `docker compose down -v`: la opcion `-v` elimina los volumenes de
+SQL Server.
 

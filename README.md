@@ -112,8 +112,9 @@ npm run dev
 ## Desplegar en un VPS
 
 El repositorio incluye un despliegue de produccion con Docker Compose, SQL
-Server persistente, HTTPS automatico, migraciones y creacion segura de usuarios
-iniciales.
+Server persistente, migraciones y creacion segura de usuarios iniciales. En el
+VPS de NexoSoft se conecta a la red externa `shared_proxy`; el Nginx central ya
+existente publica `consultorio.nexosoft.tech` y administra HTTPS.
 
 1. Copia `.env.production.example` como `.env.production`.
 2. Configura el dominio, contraseñas, JWT, Gemini y usuarios iniciales.
